@@ -1593,7 +1593,7 @@
         applyPhysics(pick, 28);
         var speed = Math.sqrt(pick.vx * pick.vx + pick.vy * pick.vy);
         var depth = Math.floor(pick.y / TILE);
-        if (depth > maxDepth) { maxDepth = depth; document.getElementById('depthDisplay').textContent = 'Depth: ' + maxDepth + 'm'; }
+        if (depth > maxDepth) { maxDepth = depth; document.getElementById('depthDisplay').textContent = 'Adâncime: ' + maxDepth + 'm'; }
         document.getElementById('scoreDisplay').textContent = '⛏ ' + score;
         var targetCamY = pick.y - canvas.height * 0.50;
         if (targetCamY < 0) targetCamY = 0;
@@ -4170,7 +4170,7 @@
         .slice(0, 10);
 
       if (sorted.length === 0) {
-        list.innerHTML = '<div style="text-align:center; opacity:0.5; font-size:12px;">Waiting for players...</div>';
+        list.innerHTML = '<div style="text-align:center; opacity:0.5; font-size:12px;">Se așteaptă jucătorii...</div>';
         return;
       }
 
@@ -4208,10 +4208,10 @@
       var cx = pick ? pick.x : canvas.width / 2;
       var cy = pick ? pick.y : camY + canvas.height * 0.5;
       var config = {
-        follow:    { icon: '⭐', title: 'NEW FOLLOWER!',          color: '#44ff88', pts: 200,  dur: 150 },
+        follow:    { icon: '⭐', title: 'UN URMĂRITOR NOU!',          color: '#44ff88', pts: 200,  dur: 150 },
         superchat: { icon: '💎', title: 'SUPER CHAT!',            color: '#ffdd44', pts: 1000, dur: 200 },
-        member:    { icon: '👑', title: 'NEW MEMBER!',            color: '#ff44ff', pts: 500,  dur: 180 },
-        gift:      { icon: '🎁', title: 'GIFTED MEMBERSHIP!',     color: '#44ddff', pts: 800,  dur: 200 }
+        member:    { icon: '👑', title: 'UN MEMBRU NOU!',            color: '#ff44ff', pts: 500,  dur: 180 },
+        gift:      { icon: '🎁', title: 'SUPERFAN!',     color: '#44ddff', pts: 800,  dur: 200 }
       };
       var cfg = config[type];
       if (!cfg) return;
