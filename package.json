@@ -1,0 +1,18 @@
+{
+  "name": "pickaxe-drop-tiktok",
+  "version": "1.0.0",
+  "description": "Pickaxe Drop - TikTok Live Integration",
+  "main": "server.js",
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js"
+  },
+  "dependencies": {
+    "express": "^4.21.0",
+    "tiktok-live-connector": "^1.2.2",
+    "ws": "^8.18.0"
+  }
+}

@@ -1,0 +1,19 @@
+# Dados sensíveis e runtime
+data/
+config.txt
+
+# Arquivos temporários
+*.rar
+*.zip
+*.bak
+
+# IDE
+.vscode/
+
+# Arquivos de split temporários
+head.txt
+tail.txt
+middle_rich.js
+
+# Node.js
+node_modules/

@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <title>Pickaxe Drop — Settings</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: #0d0d2b; color: #fff; font-family: Arial, sans-serif; display: flex; justify-content: center; align-items: center; min-height: 100vh; padding: 20px; }
+    .container { background: #1a1a2e; border: 2px solid #00ff88; border-radius: 16px; padding: 28px 32px; max-width: 460px; width: 100%; box-shadow: 0 0 40px rgba(0,255,136,0.2); }
+    h2 { color: #00ff88; text-align: center; margin-bottom: 20px; }
+    label { font-size: 13px; color: #aaa; display: block; margin-bottom: 4px; margin-top: 14px; }
+    input { width: 100%; padding: 10px 12px; border-radius: 8px; border: 1px solid #333; background: #0d0d1a; color: #fff; font-size: 14px; outline: none; }
+    input:focus { border-color: #00ff88; }
+    .btn { display: block; width: 100%; padding: 12px; border: none; border-radius: 8px; background: #00ff88; color: #000; font-weight: bold; font-size: 15px; cursor: pointer; margin-top: 20px; }
+    .btn:hover { background: #00dd77; }
+    .btn-secondary { background: transparent; border: 1px solid #555; color: #888; margin-top: 10px; }
+    .btn-secondary:hover { border-color: #00ff88; color: #00ff88; }
+    .msg { text-align: center; margin-top: 12px; font-size: 13px; color: #00ff88; display: none; }
+    .info { font-size: 12px; color: #666; margin-top: 4px; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h2>⛏️ Pickaxe Drop — Settings</h2>
+    <label>Owner Name (main pickaxe player)</label>
+    <input id="ownerName" type="text" placeholder="@tiktokusername">
+    <div class="info" id="ownerInfo">The TikTok username of the streamer. This user controls the main pickaxe.</div>
+
+    <label>Pickaxe Change Interval (seconds)</label>
+    <input id="pickInterval" type="number" value="10" min="1" max="120">
+    <div class="info">How often the pickaxe type changes randomly.</div>
+
+    <button class="btn" onclick="saveConfig()">Save & Play</button>
+    <button class="btn btn-secondary" onclick="clearData()">Clear All Saved Data</button>
+    <div class="msg" id="msg">Settings saved!</div>
+  </div>
+  <script>
+    // Load existing config
+    var cfg = JSON.parse(localStorage.getItem('pd_config') || '{}');
+    if (cfg.owner_name) document.getElementById('ownerName').value = cfg.owner_name;
+    if (cfg.pickaxe_change_interval) document.getElementById('pickInterval').value = cfg.pickaxe_change_interval;
+    if (cfg.channel_title) {
+      document.getElementById('ownerInfo').innerHTML = 'Auto-detected from channel: <span style="color:#00ff88">' + cfg.channel_title + '</span>. You can override it manually.';
+    }
+
+    function saveConfig() {
+      var existing = JSON.parse(localStorage.getItem('pd_config') || '{}');
+      existing.owner_name = document.getElementById('ownerName').value.trim();
+      existing.pickaxe_change_interval = parseInt(document.getElementById('pickInterval').value) || 10;
+      localStorage.setItem('pd_config', JSON.stringify(existing));
+      var msg = document.getElementById('msg');
+      msg.textContent = 'Settings saved!';
+      msg.style.display = 'block';
+      msg.style.color = '#00ff88';
+      setTimeout(function() { window.location.href = 'index.html'; }, 800);
+    }
+
+    function clearData() {
+      if (!confirm('This will clear all scores, settings, and API keys. Continue?')) return;
+      var keys = Object.keys(localStorage);
+      keys.forEach(function(k) { if (k.startsWith('pd_')) localStorage.removeItem(k); });
+      var msg = document.getElementById('msg');
+      msg.textContent = 'All data cleared!';
+      msg.style.display = 'block';
+      msg.style.color = '#ffaa00';
+    }
+  </script>
+</body>
+</html>

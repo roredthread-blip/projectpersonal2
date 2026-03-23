@@ -1,0 +1,4292 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+  <meta charset="UTF-8" />
+  <title>Pickaxe Drop</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      width: 100vw;
+      height: 100vh;
+      background: #0d0d2b;
+      overflow: hidden;
+      font-family: Arial, sans-serif;
+    }
+
+    #ui {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      z-index: 10;
+      color: #fff;
+      text-align: center;
+      padding: 12px 0 8px;
+      text-shadow: 0 0 8px rgba(0, 200, 255, 0.8);
+      background: linear-gradient(to bottom, rgba(0, 0, 0, 0.5), transparent);
+    }
+
+    #ui .depth {
+      font-size: 18px;
+      opacity: 0.8;
+      margin-top: -2px;
+      color: #aaa;
+    }
+
+    .score-display {
+      font-size: 22px;
+      font-weight: bold;
+      color: #ffdd44;
+      text-shadow: 0 0 8px rgba(255, 221, 68, 0.5);
+      margin-top: 2px;
+    }
+
+    #commandBox {
+      position: fixed;
+      top: 120px;
+      right: 15px;
+      z-index: 100;
+      background: rgba(0, 0, 0, 0.1);
+      padding: 10px 12px;
+      border-radius: 12px;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      backdrop-filter: blur(8px);
+      box-shadow: 0 0 15px rgba(0, 0, 0, 0.5);
+      text-align: right;
+      width: 170px;
+    }
+
+    .cmd-title {
+      font-size: 10px;
+      color: #00ff88;
+      font-weight: bold;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      border-bottom: 1px solid #00ff8844;
+      padding-bottom: 3px;
+      margin-bottom: 5px;
+    }
+
+    .cmd-item {
+      font-size: 10px;
+      margin: 2px 0;
+      color: #eee;
+      line-height: 1.3;
+    }
+
+    .cmd-highlight {
+      color: #00ff88;
+      font-weight: bold;
+    }
+
+    .cmd-section {
+      font-size: 9px;
+      color: #888;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-top: 6px;
+      margin-bottom: 2px;
+      border-top: 1px solid rgba(255,255,255,0.05);
+      padding-top: 4px;
+    }
+
+    canvas {
+      display: block;
+      touch-action: manipulation;
+      -webkit-user-select: none;
+      user-select: none;
+      -webkit-touch-callout: none;
+      /* escala para preencher a tela mantendo proporção 1080x1920 */
+      max-width: 100vw;
+      max-height: 100vh;
+      width: auto;
+      height: auto;
+      object-fit: contain;
+    }
+
+    #apiStatus {
+      position: fixed;
+      top: 12px;
+      right: 12px;
+      z-index: 100;
+      background: rgba(0, 0, 0, 0.1);
+      padding: 6px 10px;
+      border-radius: 20px;
+      border: 1px solid rgba(0, 255, 255, 0.2);
+      color: #fff;
+      font-size: 13px;
+      font-weight: bold;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      box-shadow: 0 0 15px rgba(0, 0, 0, 0.5);
+      backdrop-filter: blur(4px);
+      transition: all 0.3s ease;
+    }
+
+    .status-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: #ff4444;
+      box-shadow: 0 0 8px #ff4444;
+      transition: all 0.3s ease;
+    }
+
+    .status-dot.online {
+      background: #00ff88;
+      box-shadow: 0 0 12px #00ff88;
+      animation: statusPulse 2s infinite;
+    }
+
+    .status-dot.warning {
+      background: #ffaa00;
+      box-shadow: 0 0 8px #ffaa00;
+    }
+
+    @keyframes statusPulse {
+      0% {
+        transform: scale(1);
+        opacity: 1;
+      }
+
+      50% {
+        transform: scale(1.2);
+        opacity: 0.7;
+      }
+
+      100% {
+        transform: scale(1);
+        opacity: 1;
+      }
+    }
+
+    #leaderboard {
+      position: fixed;
+      top: 120px;
+      left: 15px;
+      z-index: 100;
+      background: rgba(0, 0, 0, 0.1);
+      padding: 10px;
+      border-radius: 10px;
+      border: 1px solid rgba(0, 255, 255, 0.2);
+      color: #fff;
+      width: 155px;
+      backdrop-filter: blur(8px);
+      box-shadow: 0 0 15px rgba(0, 0, 0, 0.5);
+    }
+
+    #announceOverlay {
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      z-index: 9999;
+      pointer-events: none;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-start;
+      padding-top: 28%;
+    }
+
+    .announce-card {
+      pointer-events: none;
+      text-align: center;
+      padding: 18px 48px;
+      border-radius: 16px;
+      background: rgba(0, 0, 0, 0.80);
+      margin-bottom: 12px;
+      animation: announceIn 0.35s ease-out forwards;
+    }
+
+    .announce-card.fade-out {
+      animation: announceOut 0.5s ease-in forwards;
+    }
+
+    .announce-card .announce-icon { font-size: 40px; }
+    .announce-card .announce-title {
+      font-size: 26px;
+      font-weight: bold;
+      margin: 4px 0;
+    }
+
+    .announce-avatar {
+      width: 64px;
+      height: 64px;
+      border-radius: 50%;
+      border: 3px solid #fff;
+      object-fit: cover;
+      margin: 0 auto 6px;
+      display: block;
+    }
+
+    .announce-avatar-placeholder {
+      width: 64px;
+      height: 64px;
+      border-radius: 50%;
+      border: 3px solid #fff;
+      margin: 0 auto 6px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 30px;
+      background: rgba(255,255,255,0.1);
+    }
+    .announce-card .announce-name {
+      font-size: 20px;
+      font-weight: bold;
+      color: #fff;
+    }
+    .announce-card .announce-pts {
+      font-size: 16px;
+      margin-top: 4px;
+      opacity: 0.85;
+    }
+
+    @keyframes announceIn {
+      0%   { opacity: 0; transform: scale(0.5); }
+      60%  { opacity: 1; transform: scale(1.08); }
+      100% { opacity: 1; transform: scale(1); }
+    }
+    @keyframes announceOut {
+      0%   { opacity: 1; transform: scale(1); }
+      100% { opacity: 0; transform: scale(0.7) translateY(-20px); }
+    }
+
+    #leaderboard h3 {
+      font-size: 13px;
+      margin-bottom: 8px;
+      color: #00ff88;
+      text-align: center;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      border-bottom: 1px solid #00ff8844;
+      padding-bottom: 3px;
+    }
+
+    .lb-item {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-bottom: 5px;
+      font-size: 11px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+      padding-bottom: 3px;
+    }
+
+    .lb-rank {
+      width: 16px;
+      font-weight: bold;
+      color: #aaa;
+    }
+
+    .lb-avatar {
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      border: 1px solid #fff;
+    }
+
+    .lb-name {
+      flex: 1;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      font-weight: 500;
+    }
+
+    .lb-score {
+      font-weight: bold;
+      color: #ffdd44;
+      text-shadow: 0 0 3px rgba(255, 221, 68, 0.3);
+    }
+  </style>
+</head>
+
+<body>
+  <!-- TikTok Setup Modal -->
+  <div id="apiSetupOverlay" style="display:flex; position:fixed; inset:0; z-index:99999; background:rgba(0,0,0,0.92); align-items:center; justify-content:center; font-family:Arial,sans-serif;">
+    <div id="apiSetupBox" style="background:#1a1a2e; border:2px solid #00ff88; border-radius:16px; padding:28px 32px; max-width:460px; width:90%; color:#fff; box-shadow:0 0 40px rgba(0,255,136,0.2);">
+      <div style="text-align:center; margin-bottom:18px;">
+        <div style="font-size:36px;">⛏️</div>
+        <h2 style="margin:8px 0 4px; color:#00ff88; font-size:20px;">Pickaxe Drop — TikTok Live</h2>
+        <p id="apiSetupMsg" style="font-size:13px; color:#aaa; margin:0;">Enter the TikTok username of the live streamer to connect.</p>
+      </div>
+      <div id="apiSetupError" style="display:none; background:rgba(255,68,68,0.15); border:1px solid #ff4444; border-radius:8px; padding:8px 12px; margin-bottom:12px; font-size:12px; color:#ff8888;"></div>
+      <div id="apiSetupSuccess" style="display:none; background:rgba(0,255,136,0.1); border:1px solid #00ff88; border-radius:8px; padding:8px 12px; margin-bottom:12px; font-size:12px; color:#00ff88;"></div>
+      <label style="font-size:12px; color:#888; display:block; margin-bottom:4px;">TikTok Username</label>
+      <input id="tiktokUsernameInput" type="text" placeholder="@username" style="width:100%; padding:10px 12px; border-radius:8px; border:1px solid #333; background:#0d0d1a; color:#fff; font-size:14px; margin-bottom:16px; box-sizing:border-box; outline:none;" />
+      <div style="display:flex; gap:8px;">
+        <button id="apiTestBtn" onclick="tiktokConnect()" style="flex:1; padding:10px; border:none; border-radius:8px; background:#00ff88; color:#000; font-weight:bold; font-size:14px; cursor:pointer;">Connect</button>
+        <button id="apiSkipBtn" onclick="tiktokSkip()" style="padding:10px 16px; border:1px solid #555; border-radius:8px; background:transparent; color:#888; font-size:13px; cursor:pointer;">Play Offline</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="ui">
+    <div id="apiStatus">
+      <div class="status-dot" id="statusDotApi"></div>
+      <span id="statusTextApi" style="font-size:11px;">TikTok: —</span>
+    </div>
+    <div class="depth" id="depthDisplay">Adâncime: 0m</div>
+    <div class="score-display" id="scoreDisplay">⛏ 0</div>
+
+    <div id="commandBox">
+      <div class="cmd-title">⛏ Cum se joacă?</div>
+      <div class="cmd-item">💬 <span class="cmd-highlight">play</span> — Participă</div>
+      <div class="cmd-item">❤ <span class="cmd-highlight">like</span> — Participă</div>
+      <div class="cmd-section">💬 Chat TNT</div>
+      <div class="cmd-item">💣 <span class="cmd-highlight">tnt</span> — 1 TNT</div>
+      <div class="cmd-item">💥 <span class="cmd-highlight">mega tnt</span> — Mega TNT</div>
+      <div class="cmd-section">🎁 Cadouri</div>
+      <div class="cmd-item">🌹 Trandafir — 1 TNT</div>
+      <div class="cmd-item">🎵 TikTok — 2 TNT</div>
+      <div class="cmd-item">🎮 GG — 3 TNT</div>
+      <div class="cmd-item">❤️ Aprecieri — Mega TNT</div>
+    </div>
+
+    <!-- Status ocultos ou simplificados -->
+    <div id="skillDoublePick" style="display:none;"></div>
+    <div id="skillStorm" style="display:none;"></div>
+  </div>
+
+  <div id="leaderboard">
+    <h3>🏆 Clasament</h3>
+    <div id="leaderboardList">
+      <!-- lb-items aqui -->
+      <div style="text-align:center; opacity:0.5; font-size:12px;">Se așteaptă jucătorii...</div>
+    </div>
+  </div>
+
+  <div id="announceOverlay"></div>
+
+  <canvas id="gameCanvas"></canvas>
+  <script>
+    var canvas = document.getElementById('gameCanvas');
+    var ctx = canvas.getContext('2d');
+    var COLS = 15, TILE = 72;
+    var VIS = 27;
+    canvas.width = COLS * TILE;
+    canvas.height = VIS * TILE;
+
+
+    // ── Mobile detection & performance scaling ──
+    var isMobile = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent);
+    var MAX_PARTS = isMobile ? 40 : 120;
+    var MAX_DEBRIS = isMobile ? 30 : 100;
+    var MAX_TEXTS = isMobile ? 12 : 30;
+    var SHADOW_ENABLED = !isMobile;
+    // ── Tipos ──
+    var E = 0, DIRT = 1, STONE = 2, COAL = 3, IRON = 4, GOLD = 5, REDSTONE = 6, DIAMOND = 7, EMERALD = 8, BEDROCK = 9,
+        GRASS = 10, ANDESITE = 11, DIORITE = 12, GRANITE = 13, COBBLE = 14, MOSSY = 15, COPPER = 16, LAPIS = 17, OBSIDIAN = 18;
+    var BDEF = {
+      1:  { color: '#c4a423', glow: '#c88451', hp: 1,   pts: 5,   name: 'Dirt',        img: 'block/dirt.png' },
+      2:  { color: '#4a5a6a', glow: '#90b0c0', hp: 3,   pts: 10,  name: 'Stone',       img: 'block/stone.png' },
+      3:  { color: '#2a2a2a', glow: '#888888', hp: 2,   pts: 20,  name: 'Coal',        img: 'block/coal_ore.png' },
+      4:  { color: '#7a6050', glow: '#ffcc80', hp: 3,   pts: 35,  name: 'Iron',        img: 'block/iron_ore.png' },
+      5:  { color: '#a07010', glow: '#ffe066', hp: 4,   pts: 60,  name: 'Gold',        img: 'block/gold_ore.png' },
+      6:  { color: '#8a0000', glow: '#ff4444', hp: 3,   pts: 50,  name: 'Redstone',    img: 'block/redstone_ore.png' },
+      7:  { color: '#007a9a', glow: '#88ffff', hp: 6,   pts: 150, name: 'Diamond',     img: 'block/diamond_ore.png' },
+      8:  { color: '#006040', glow: '#88ffcc', hp: 5,   pts: 200, name: 'Emerald',     img: 'block/emerald_ore.png' },
+      9:  { color: '#1a1a2a', glow: '#444466', hp: 999, pts: 0,   name: 'Bedrock',     img: 'block/bedrock.png' },
+      10: { color: '#5a8c32', glow: '#7acc44', hp: 1,   pts: 3,   name: 'Grass',       img: 'block/grass_block.png' },
+      11: { color: '#6a6a6a', glow: '#a0a0a0', hp: 2,   pts: 8,   name: 'Andesite',    img: 'block/andesite.png' },
+      12: { color: '#b0a8a0', glow: '#d0c8c0', hp: 2,   pts: 8,   name: 'Diorite',     img: 'block/diorite.png' },
+      13: { color: '#9a6a4a', glow: '#c09070', hp: 2,   pts: 8,   name: 'Granite',     img: 'block/granite.png' },
+      14: { color: '#5a5a5a', glow: '#909090', hp: 3,   pts: 12,  name: 'Cobblestone', img: 'block/cobblestone.png' },
+      15: { color: '#4a6a4a', glow: '#70a070', hp: 3,   pts: 15,  name: 'Mossy Cobblestone', img: 'block/mossy_cobblestone.png' },
+      16: { color: '#b06030', glow: '#e08850', hp: 3,   pts: 30,  name: 'Copper',      img: 'block/copper_ore.png' },
+      17: { color: '#1a3a8a', glow: '#4488ff', hp: 3,   pts: 45,  name: 'Lapis Lazuli', img: 'block/lapis_ore.png' },
+      18: { color: '#0a0a14', glow: '#4a2a6a', hp: 8,   pts: 100, name: 'Obsidian',    img: 'block/obsidian.png' }
+    };
+
+    // ── Itens Colecionáveis ──
+    var ITEM_DEFS = {
+      3: { img: 'item/coal.png' },
+      4: { img: 'item/iron_ingot.png' },
+      5: { img: 'item/gold_ingot.png' },
+      6: { img: 'item/redstone.png' },
+      7: { img: 'item/diamond.png' },
+      8: { img: 'item/emerald.png' },
+      16: { img: 'item/copper_ingot.png' },
+      17: { img: 'item/lapis_lazuli.png' }
+    };
+    var ITEX = {};
+    var BTEX = {};
+
+    (function () {
+      Object.keys(BDEF).forEach(function (k) {
+        var img = new Image();
+        img.src = BDEF[k].img;
+        BTEX[k] = img;
+      });
+      Object.keys(ITEM_DEFS).forEach(function (k) {
+        var img = new Image();
+        img.src = ITEM_DEFS[k].img;
+        ITEX[k] = img;
+      });
+    })();
+
+    // ── Destroy stages (0-9) ──
+    var DESTROY_TEX = [];
+    (function () {
+      for (var i = 0; i <= 9; i++) {
+        var img = new Image();
+        img.src = 'destroy_stage/destroy_stage_' + i + '.png';
+        DESTROY_TEX.push(img);
+      }
+    })();
+
+    // ── Explosion frames ──
+    var EXPLOSION_TEX = [];
+    (function () {
+      for (var i = 0; i <= 15; i++) {
+        var img = new Image();
+        img.src = 'particle/explosion_' + i + '.png';
+        EXPLOSION_TEX.push(img);
+      }
+    })();
+    var TNT_TEX = new Image(); TNT_TEX.src = 'block/tnt.png';
+    var MEGA_TNT_TEX = new Image(); MEGA_TNT_TEX.src = 'block/mega_tnt.png';
+
+    var TNT_RADIUS = 3;
+    var MEGA_TNT_RADIUS = 6;
+
+    var BOUNCE = 0.82;
+    var FRICTION = 0.995;
+    var SPIN_DAMP = 0.99;
+    var GRAVITY = 0.15;
+
+    // ── Swept AABB para TNT ──
+    function sweptAABB(bx, by, vx, vy, hs, tileCol, tileRow) {
+      var tl = tileCol * TILE, tr = tl + TILE;
+      var tt = tileRow * TILE, tb = tt + TILE;
+      var el = tl - hs, er = tr + hs;
+      var et = tt - hs, eb = tb + hs;
+
+      var txEntry, txExit, tyEntry, tyExit;
+      if (vx === 0) {
+        txEntry = -Infinity; txExit = Infinity;
+      } else {
+        var tx1 = (el - bx) / vx, tx2 = (er - bx) / vx;
+        txEntry = Math.min(tx1, tx2); txExit = Math.max(tx1, tx2);
+      }
+      if (vy === 0) {
+        tyEntry = -Infinity; tyExit = Infinity;
+      } else {
+        var ty1 = (et - by) / vy, ty2 = (eb - by) / vy;
+        tyEntry = Math.min(ty1, ty2); tyExit = Math.max(ty1, ty2);
+      }
+
+      var entry = Math.max(txEntry, tyEntry);
+      var exit = Math.min(txExit, tyExit);
+      if (entry > exit || entry > 1 || exit < 0) return null;
+      if (entry < 0) return null;
+
+      var nx = 0, ny = 0;
+      if (txEntry > tyEntry) { nx = vx < 0 ? 1 : -1; }
+      else { ny = vy < 0 ? 1 : -1; }
+      return { t: entry, nx: nx, ny: ny };
+    }
+
+    function updateTNTBlocks() {
+      var TNT_GRAVITY = 0.35;
+      var wallLeft = TILE + 1;
+      var wallRight = (COLS - 1) * TILE - 1;
+      for (var i = tntBlocks.length - 1; i >= 0; i--) {
+        var b = tntBlocks[i];
+        var hs = b.mega ? TILE * 0.9 : TILE * 0.5;
+        b.blinkTimer++;
+        b.vy += TNT_GRAVITY;
+        b.ang = (b.ang || 0) + (b.spin || 0);
+
+        // sanitizar NaN/Infinity
+        if (!isFinite(b.vx)) b.vx = 0;
+        if (!isFinite(b.vy)) b.vy = 0;
+        if (!isFinite(b.x) || !isFinite(b.y)) { tntBlocks.splice(i, 1); continue; }
+
+        var maxSpd = TILE * 0.9;
+        var spd = Math.sqrt(b.vx * b.vx + b.vy * b.vy);
+        if (spd > maxSpd) { b.vx = b.vx / spd * maxSpd; b.vy = b.vy / spd * maxSpd; }
+
+        // clamp paredes laterais (bedrock)
+        if (b.x - hs < wallLeft) { b.x = wallLeft + hs; b.vx = Math.abs(b.vx) * BOUNCE; }
+        if (b.x + hs > wallRight) { b.x = wallRight - hs; b.vx = -Math.abs(b.vx) * BOUNCE; }
+
+        // topo
+        if (b.y - hs < 0) { b.y = hs; b.vy = Math.abs(b.vy) * BOUNCE; }
+
+        // depenetração — se a TNT está dentro de um bloco sólido, empurrar para fora
+        var centerCol = Math.floor(b.x / TILE);
+        var centerRow = Math.floor(b.y / TILE);
+        var depR0 = Math.floor((b.y - hs) / TILE);
+        var depR1 = Math.floor((b.y + hs) / TILE);
+        var depC0 = Math.floor((b.x - hs) / TILE);
+        var depC1 = Math.floor((b.x + hs) / TILE);
+        for (var dr = depR0; dr <= depR1; dr++) {
+          for (var dc = depC0; dc <= depC1; dc++) {
+            var depCell = getCell(dr, dc);
+            if (!depCell || depCell.t === E) continue;
+            // calcular overlap AABB
+            var bl = b.x - hs, br2 = b.x + hs, bt = b.y - hs, bb = b.y + hs;
+            var tl = dc * TILE, tr = tl + TILE, tt = dr * TILE, tb = tt + TILE;
+            var ox = Math.min(br2, tr) - Math.max(bl, tl);
+            var oy = Math.min(bb, tb) - Math.max(bt, tt);
+            if (ox > 0 && oy > 0) {
+              // empurrar pelo eixo de menor penetração
+              if (ox < oy) {
+                if (b.x < tl + TILE * 0.5) { b.x -= ox + 1; b.vx = -Math.abs(b.vx) * 0.3; }
+                else { b.x += ox + 1; b.vx = Math.abs(b.vx) * 0.3; }
+              } else {
+                if (b.y < tt + TILE * 0.5) { b.y -= oy + 1; b.vy = -Math.abs(b.vy) * 0.3; }
+                else { b.y += oy + 1; b.vy = Math.abs(b.vy) * 0.3; }
+              }
+            }
+          }
+        }
+
+        // swept collision — até 3 bounces por frame
+        var remainVx = b.vx, remainVy = b.vy;
+        for (var iter = 0; iter < 3; iter++) {
+          if (remainVx === 0 && remainVy === 0) break;
+
+          //    candidatos ao redor da TNT
+          var r0 = Math.floor((b.y - hs) / TILE) - 1;
+          var r1 = Math.floor((b.y + hs) / TILE) + 1;
+          var c0 = Math.floor((b.x - hs) / TILE) - 1;
+          var c1 = Math.floor((b.x + hs) / TILE) + 1;
+
+          var earliest = null;
+          for (var r = r0; r <= r1; r++) {
+            for (var c = c0; c <= c1; c++) {
+              var cell = getCell(r, c);
+              if (!cell || cell.t === E) continue;
+              var hit = sweptAABB(b.x, b.y, remainVx, remainVy, hs, c, r);
+              if (hit && (!earliest || hit.t < earliest.t)) { earliest = hit; }
+            }
+          }
+
+          if (!earliest) {
+            b.x += remainVx; b.y += remainVy;
+            break;
+          }
+
+
+          // move até o ponto de colisão (com pequena margem)
+          b.x += remainVx * (earliest.t - 0.001);
+          b.y += remainVy * (earliest.t - 0.001);
+
+          // reflete velocidade no eixo da normal
+          if (earliest.nx !== 0) {
+            remainVx = -remainVx * BOUNCE;
+            b.vx = -b.vx * BOUNCE * FRICTION;
+            remainVy *= (1 - earliest.t);
+          } else {
+            remainVy = -remainVy * BOUNCE;
+            b.vy = -b.vy * BOUNCE;
+            remainVx *= (1 - earliest.t) * FRICTION;
+          }
+          b.spin = (b.spin || 0) * SPIN_DAMP + (Math.random() - 0.5) * 0.05;
+        }
+
+        // colisão entre TNT
+        for (var j = i - 1; j >= 0; j--) {
+          var o = tntBlocks[j];
+          var ohs = o.mega ? TILE * 0.9 : TILE * 0.5;
+          var minDist = hs + ohs;
+          var dx = b.x - o.x, dy = b.y - o.y;
+          var dist = Math.sqrt(dx * dx + dy * dy);
+          if (dist < minDist && dist > 0) {
+            var nx = dx / dist, ny = dy / dist;
+            var overlap = minDist - dist;
+            b.x += nx * overlap * 0.5; b.y += ny * overlap * 0.5;
+            o.x -= nx * overlap * 0.5; o.y -= ny * overlap * 0.5;
+            var dvx = b.vx - o.vx, dvy = b.vy - o.vy;
+            var dot = dvx * nx + dvy * ny;
+            if (dot < 0) {
+              b.vx -= dot * nx * BOUNCE; b.vy -= dot * ny * BOUNCE;
+              o.vx += dot * nx * BOUNCE; o.vy += dot * ny * BOUNCE;
+            }
+            b.spin = (b.spin || 0) * SPIN_DAMP + (Math.random() - 0.5) * 0.08;
+            o.spin = (o.spin || 0) * SPIN_DAMP + (Math.random() - 0.5) * 0.08;
+          }
+        }
+
+        // colisão TNT vs picareta
+        var pdx = b.x - pick.x, pdy = b.y - pick.y;
+        var pdist = Math.sqrt(pdx * pdx + pdy * pdy);
+        if (pdist < hs + PICK_HALF && pdist > 0) {
+          var pnx = pdx / pdist, pny = pdy / pdist;
+          var pov = (hs + PICK_HALF) - pdist;
+          b.x += pnx * pov * 0.5; b.y += pny * pov * 0.5;
+          pick.x -= pnx * pov * 0.5; pick.y -= pny * pov * 0.5;
+          var pdvx = b.vx - pick.vx, pdvy = b.vy - pick.vy;
+          var pdot = pdvx * pnx + pdvy * pny;
+          if (pdot < 0) {
+            b.vx -= pdot * pnx * BOUNCE; b.vy -= pdot * pny * BOUNCE;
+            pick.vx += pdot * pnx * BOUNCE; pick.vy += pdot * pny * BOUNCE;
+          }
+          b.spin = (b.spin || 0) * SPIN_DAMP + (Math.random() - 0.5) * 0.08;
+          pick.spin = (pick.spin || 0) * SPIN_DAMP + (Math.random() - 0.5) * 0.08;
+        }
+
+        if (b.blinkTimer > b.fuse) { detonateTNTBlock(b); tntBlocks.splice(i, 1); }
+      }
+    }
+
+    function detonateTNTBlock(b) {
+
+      var radius = b.mega ? MEGA_TNT_RADIUS : TNT_RADIUS;
+      var cx = Math.floor(b.x / TILE);
+      var cy = Math.floor(b.y / TILE);
+      var pts = 0;
+      var destroyedBlocks = [];
+      for (var r = cy - radius; r <= cy + radius; r++) {
+        for (var c = cx - radius; c <= cx + radius; c++) {
+          var dist = Math.sqrt((c - cx) * (c - cx) + (r - cy) * (r - cy));
+          if (dist > radius) continue;
+          var cell = getCell(r, c);
+          if (!cell || cell.t === E || cell.t === BEDROCK) continue;
+          var bPts = BDEF[cell.t].pts || 0;
+          pts += bPts;
+          if (ITEM_DEFS[cell.t]) {
+            var tntSource = null;
+            if (b.userName) {
+              if (ownerName && b.userName === ownerName) tntSource = pick;
+              else tntSource = userPicks.find(function(u) { return u.userName === b.userName; });
+            }
+            spawnItem(c * TILE + TILE / 2, r * TILE + TILE / 2, cell.t, tntSource || pick);
+          }
+          destroyedBlocks.push({ t: cell.t, wx: c * TILE + TILE / 2, wy: r * TILE + TILE / 2 });
+          cell.t = E; cell.hp = 0; cell.cr = 0;
+        }
+      }
+      if (pts > 0) {
+        score += pts;
+        spawnText(b.x, b.y, '+' + pts, '#ffdd44');
+        if (b.userName) {
+          var player = userPicks.find(function (u) { return u.userName === b.userName; });
+          if (player) player.score = (player.score || 0) + pts;
+          if (!persistentScores[b.userName]) persistentScores[b.userName] = { score: 0, avatar: b.userAvatarUrl || '' };
+          persistentScores[b.userName].score += pts;
+        }
+      }
+      var debrisPerBlock = isMobile ? (b.mega ? 1 : 1) : (b.mega ? 4 : 2);
+      var maxExplosionDebris = isMobile ? (b.mega ? 20 : 10) : (b.mega ? 120 : 60);
+      var spawned = 0;
+      for (var i = 0; i < destroyedBlocks.length && spawned < maxExplosionDebris; i++) {
+        var blk = destroyedBlocks[i];
+        var n = Math.min(debrisPerBlock, maxExplosionDebris - spawned);
+        for (var k = 0; k < n; k++) {
+          if (debris.length >= (isMobile ? 50 : 200)) break;
+          var dx = blk.wx - b.x, dy = blk.wy - b.y;
+          var d = Math.sqrt(dx * dx + dy * dy) || 1;
+          var baseSpd = (b.mega ? 5 : 3.5) + Math.random() * 3;
+          var scatter = b.mega ? 4 : 2.5;
+          debris.push({
+            x: blk.wx + (Math.random() - 0.5) * TILE * 0.5,
+            y: blk.wy + (Math.random() - 0.5) * TILE * 0.5,
+            vx: (dx / d) * baseSpd + (Math.random() - 0.5) * scatter,
+            vy: (dy / d) * baseSpd - Math.random() * 3,
+            t: blk.t,
+            size: (b.mega ? 14 : 10) + Math.random() * 8,
+            life: 1, age: 0, followFrames: 0,
+            ang: Math.random() * Math.PI * 2,
+            spin: (Math.random() - 0.5) * 0.3
+          });
+          spawned++;
+        }
+      }
+      explosions.push({ x: b.x, y: b.y, frame: 0, timer: 0, mega: b.mega });
+      // Damage zombies in blast radius
+      var blastR = (b.mega ? MEGA_TNT_RADIUS : TNT_RADIUS) * TILE;
+      for (var zi = zombies.length - 1; zi >= 0; zi--) {
+        var zz = zombies[zi];
+        if (zz.state === 'dead') continue;
+        var zdx = zz.x - b.x, zdy = zz.y - b.y;
+        var zd = Math.sqrt(zdx * zdx + zdy * zdy);
+        if (zd < blastR) {
+          var dmg = b.mega ? 10 : 5;
+          zz.hp -= dmg;
+          zz.hurtTimer = 15;
+          zz.animTimer = 0;
+          if (zd > 0) { zz.vx = (zdx / zd) * 5; zz.vy = (zdy / zd) * 5 - 3; }
+          spawnText(zz.x, zz.y - ZOMBIE_SIZE * 0.5, '-' + dmg, '#ff8844');
+          sfxZombieHurt();
+          if (zz.hp <= 0) {
+            zz.state = 'dead'; zz.animTimer = 0; zz.deadTimer = 0;
+            score += zz.pts;
+            spawnText(zz.x, zz.y - ZOMBIE_SIZE * 0.6, '+' + zz.pts, '#ffdd44');
+            sfxZombieDeath();
+          }
+        }
+      }
+      // Damage bats in blast radius
+      for (var bi = bats.length - 1; bi >= 0; bi--) {
+        var bb = bats[bi];
+        if (bb.state === 'dead') continue;
+        var bdx = bb.x - b.x, bdy = bb.y - b.y;
+        var bd = Math.sqrt(bdx * bdx + bdy * bdy);
+        if (bd < blastR) {
+          var batDmg = b.mega ? 5 : 3;
+          bb.hp -= batDmg;
+          bb.hurtTimer = 10;
+          bb.anim = 0;
+          if (bd > 0) { bb.vx = (bdx / bd) * 4; bb.vy = (bdy / bd) * 4 - 2; }
+          spawnText(bb.x, bb.y - BAT_SIZE * 0.4, '-' + batDmg, '#ff88cc');
+          sfxBatHurt();
+          if (bb.hp <= 0) {
+            bb.state = 'dead'; bb.anim = 0; bb.deadTimer = 0;
+            score += bb.pts;
+            spawnText(bb.x, bb.y - BAT_SIZE * 0.5, '+' + bb.pts, '#ffdd44');
+            sfxBatDeath();
+          } else {
+            bb.state = 'hurt';
+          }
+        }
+      }
+      shakeAmt = Math.max(shakeAmt, b.mega ? 22 : 10);
+      if (b.mega) sfxMegaTNT(); else sfxTNT();
+    }
+
+    // encontra posição Y segura (espaço vazio) para spawnar TNT
+    function findSafeTNTSpawn(bx, sy, hs) {
+      var tryY = sy - TILE;
+      // tenta até 5 posições acima para achar espaço livre
+      for (var attempt = 0; attempt < 5; attempt++) {
+        var r0 = Math.floor((tryY - hs) / TILE);
+        var r1 = Math.floor((tryY + hs) / TILE);
+        var c0 = Math.floor((bx - hs) / TILE);
+        var c1 = Math.floor((bx + hs) / TILE);
+        var blocked = false;
+        for (var rr = r0; rr <= r1; rr++) {
+          for (var cc = c0; cc <= c1; cc++) {
+            var cell = getCell(rr, cc);
+            if (cell && cell.t !== E && cell.t !== BEDROCK) { blocked = true; break; }
+          }
+          if (blocked) break;
+        }
+        if (!blocked) return tryY;
+        tryY -= TILE;
+      }
+      return tryY; // fallback: bem acima
+    }
+
+    var _tntSpawnCount = 0; // sequential counter for staggered fuses
+
+    function activateTNT(tx, ty, userName, avatarUrl) {
+      if (tntBlocks.length > 20) return;
+      var sx = tx !== undefined ? tx : pick.x;
+      var sy = ty !== undefined ? ty : pick.y;
+      var bx = sx + (Math.random() - 0.5) * TILE * 2;
+      var hs = TILE * 0.5;
+      bx = Math.max(TILE + hs + 2, Math.min((COLS - 1) * TILE - hs - 2, bx));
+      var by = findSafeTNTSpawn(bx, sy, hs);
+      _tntSpawnCount++;
+      var b = {
+        x: bx,
+        y: by,
+        vx: tx !== undefined ? (Math.random() - 0.5) * 10 : (Math.random() - 0.5) * 5,
+        vy: -3 - Math.random() * 3,
+        ang: Math.random() * Math.PI * 2,
+        spin: (Math.random() - 0.5) * 0.2,
+        blinkTimer: -(_tntSpawnCount % 8) * 15 - Math.floor(Math.random() * 10),
+        fuse: 100, mega: false,
+        userName: userName, userAvatarUrl: avatarUrl
+      };
+      tntBlocks.push(b);
+    }
+
+    function activateMegaTNT(tx, ty, userName, avatarUrl) {
+      if (tntBlocks.length > 20) return;
+      var sx = tx !== undefined ? tx : pick.x;
+      var sy = ty !== undefined ? ty : pick.y;
+      var bx = sx + (Math.random() - 0.5) * TILE * 2;
+      var hs = TILE * 0.9;
+      bx = Math.max(TILE + hs + 2, Math.min((COLS - 1) * TILE - hs - 2, bx));
+      var by = findSafeTNTSpawn(bx, sy, hs);
+      _tntSpawnCount++;
+      var b = {
+        x: bx,
+        y: by,
+        vx: tx !== undefined ? (Math.random() - 0.5) * 10 : (Math.random() - 0.5) * 5,
+        vy: -3 - Math.random() * 3,
+        ang: Math.random() * Math.PI * 2,
+        spin: (Math.random() - 0.5) * 0.2,
+        blinkTimer: -(_tntSpawnCount % 6) * 20 - Math.floor(Math.random() * 15),
+        fuse: 160, mega: true,
+        userName: userName, userAvatarUrl: avatarUrl
+      };
+      tntBlocks.push(b);
+    }
+
+    function safeUpdate(id, text, color) {
+      var el = document.getElementById(id);
+      if (!el) return;
+      if (text !== undefined) el.textContent = text;
+      if (color !== undefined) el.style.color = color;
+    }
+
+    function updateDoublePickHUD() {
+      var el = document.getElementById('skillDoublePick');
+      if (!el) return;
+      if (doublePickActive) {
+        el.style.display = 'block';
+        el.textContent = '⚒️ DOUBLE: ' + Math.ceil(doublePickTimer / 60) + 's';
+      } else {
+        el.style.display = 'none';
+      }
+    }
+
+    function updateStormHUD() {
+      var el = document.getElementById('skillStorm');
+      if (!el) return;
+      if (stormActive) {
+        el.style.display = 'block';
+        el.textContent = '⛈️ STORM: ' + Math.ceil(stormTimer / 60) + 's';
+      } else {
+        el.style.display = 'none';
+      }
+    }
+
+    // ── Picaretas disponíveis ──────────────────────────────────────────────────────────
+    var PICKAXES = [
+      { name: 'Wood', img: 'pickaxe/wooden_pickaxe.png', damage: 0.5, color: '#c8a464' },
+      { name: 'Stone', img: 'pickaxe/stone_pickaxe.png', damage: 1.0, color: '#aaaaaa' },
+      { name: 'Iron', img: 'pickaxe/iron_pickaxe.png', damage: 1.5, color: '#d8d8d8' },
+      { name: 'Gold', img: 'pickaxe/golden_pickaxe.png', damage: 1.2, color: '#ffe066' },
+      { name: 'Diamond', img: 'pickaxe/diamond_pickaxe.png', damage: 2.5, color: '#44ddff' },
+      { name: 'Netherite', img: 'pickaxe/netherite_pickaxe.png', damage: 3.5, color: '#554444' }
+    ];
+    PICKAXES.forEach(function (p) { p.imgObj = new Image(); p.imgObj.src = p.img; });
+
+    var currentPickaxe = PICKAXES[0];
+    var PICK_SIZE = 80;
+    var pickaxeChangeInterval = 10;
+
+    function changePickaxe() {
+      var prev = currentPickaxe;
+      do { currentPickaxe = PICKAXES[Math.floor(Math.random() * PICKAXES.length)]; }
+      while (currentPickaxe === prev && PICKAXES.length > 1);
+      safeUpdate('pickaxeDisplay', '⛏ ' + currentPickaxe.name, currentPickaxe.color);
+      if (_audioStarted) sfxPickaxeChange();
+    }
+
+    // ── Config from localStorage (no PHP needed) ──
+    (function() {
+      var cfg = JSON.parse(localStorage.getItem('pd_config') || '{}');
+      pickaxeChangeInterval = cfg.pickaxe_change_interval || 10;
+      if (cfg.owner_name) {
+        ownerName = cfg.owner_name.replace(/^@@+/, '@').toLowerCase();
+        if (ownerName && ownerName[0] !== '@') ownerName = '@' + ownerName;
+      }
+      changePickaxe();
+      setInterval(changePickaxe, pickaxeChangeInterval * 1000);
+    })();
+
+    // ── Mapa infinito ──────────────────────────────────────────────────────────────────
+    var worldMap = {};
+    var topRow = 0;
+    var botRow = 0;
+
+    var CLEARING_INTERVAL = 25; // every 25m
+    var CLEARING_HEIGHT = 8;    // max height of clearing
+    var clearedZones = {};      // track which clearings already spawned zombies
+    var clearingShapes = {};    // cached organic shapes per zone
+
+    // ── Crystal types for clearings ──
+    var CRYSTAL_TYPES = [
+      'Black_crystal', 'Blue_crystal', 'Dark_red_ crystal', 'Green_crystal',
+      'Pink_crystal', 'Red_crystal', 'Violet_crystal', 'White_crystal',
+      'Yellow_crystal', 'Yellow-green_crystal'
+    ];
+    var crystalSprites = {};
+    CRYSTAL_TYPES.forEach(function(ct) {
+      crystalSprites[ct] = [];
+      for (var i = 1; i <= 4; i++) {
+        var img = new Image();
+        img.src = 'cristals/' + ct + i + '.png';
+        crystalSprites[ct].push(img);
+      }
+    });
+    var clearingCrystals = {}; // zone -> crystal type
+    // Array of crystal decorations growing INTO the empty space
+    // Each: { x, y, variant, rotation, scale, type, zone }
+    var crystalDecoList = [];
+
+    // Seeded random for deterministic clearing shapes
+    function seededRand(seed) {
+      var x = Math.sin(seed * 9301 + 49297) * 49297;
+      return x - Math.floor(x);
+    }
+
+    // Generate organic clearing shape for a zone
+    function getClearingShape(zone) {
+      if (clearingShapes[zone]) return clearingShapes[zone];
+      var shape = {}; // shape[localRow] = { left: col, right: col }
+      var seed = zone * 137;
+      // Center column varies per row for organic feel
+      var centerCol = 4 + Math.floor(seededRand(seed) * (COLS - 8));
+      for (var lr = 0; lr < CLEARING_HEIGHT; lr++) {
+        // Width narrows at top and bottom (ellipse-like)
+        var vertFactor = 1 - Math.pow((lr - CLEARING_HEIGHT / 2) / (CLEARING_HEIGHT / 2), 2);
+        var maxWidth = Math.floor(3 + vertFactor * (COLS - 6));
+        // Wobble the center per row
+        var wobble = Math.floor(seededRand(seed + lr * 31) * 3) - 1;
+        var rowCenter = Math.max(3, Math.min(COLS - 4, centerCol + wobble));
+        var halfW = Math.max(1, Math.floor(maxWidth / 2));
+        // Add noise to edges
+        var noiseL = Math.floor(seededRand(seed + lr * 17) * 2);
+        var noiseR = Math.floor(seededRand(seed + lr * 23) * 2);
+        var left = Math.max(1, rowCenter - halfW + noiseL);
+        var right = Math.min(COLS - 2, rowCenter + halfW - noiseR);
+        shape[lr] = { left: left, right: right };
+      }
+      clearingShapes[zone] = shape;
+      return shape;
+    }
+
+    // ── Tunnel system connecting clearings ──
+    var tunnelShapes = {}; // cached tunnel paths per zone pair
+
+    function getTunnelShape(zone) {
+      // Tunnel connects bottom of clearing `zone` to top of clearing `zone+1`
+      if (tunnelShapes[zone]) return tunnelShapes[zone];
+      if (zone < 1) { tunnelShapes[zone] = []; return []; }
+
+      var shape = []; // array of { row, left, right }
+      var seed = zone * 7919 + 3571;
+
+      // Source: bottom of clearing zone
+      var srcShape = getClearingShape(zone);
+      var srcBottom = srcShape[CLEARING_HEIGHT - 1];
+      var srcRow = zone * CLEARING_INTERVAL + CLEARING_HEIGHT; // first row below clearing
+
+      // Destination: top of clearing zone+1
+      var dstShape = getClearingShape(zone + 1);
+      var dstTop = dstShape[0];
+      var dstRow = (zone + 1) * CLEARING_INTERVAL; // first row of next clearing
+
+      if (!srcBottom || !dstTop) { tunnelShapes[zone] = []; return []; }
+
+      var totalRows = dstRow - srcRow;
+      if (totalRows <= 0) { tunnelShapes[zone] = []; return []; }
+
+      // Start center from source clearing, end center at destination clearing
+      var startCenter = Math.floor((srcBottom.left + srcBottom.right) / 2);
+      var endCenter = Math.floor((dstTop.left + dstTop.right) / 2);
+
+      // Tunnel width: 1-2 blocks, aggressive zigzag
+      var curCenter = startCenter;
+      var zigDir = seededRand(seed) > 0.5 ? 1 : -1; // initial zigzag direction
+      var zigLen = 2 + Math.floor(seededRand(seed + 1) * 3); // rows before switching
+      var zigCount = 0;
+      for (var i = 0; i < totalRows; i++) {
+        var progress = i / totalRows;
+        // Base lerp toward destination
+        var targetCenter = startCenter + (endCenter - startCenter) * progress;
+
+        // Aggressive zigzag: shift sideways in alternating runs
+        zigCount++;
+        if (zigCount >= zigLen) {
+          zigDir *= -1;
+          zigLen = 2 + Math.floor(seededRand(seed + i * 47 + 999) * 3);
+          zigCount = 0;
+        }
+        var zigShift = zigDir * (2 + Math.floor(seededRand(seed + i * 47) * 2));
+        curCenter = Math.round(targetCenter + zigShift);
+        curCenter = Math.max(2, Math.min(COLS - 3, curCenter));
+
+        // Narrow width: 1 block wide, occasionally 2 near clearings
+        var distFactor = Math.min(progress, 1 - progress) * 2;
+        var baseWidth = 0.5 + (1 - distFactor) * 0.5;
+        var halfW = Math.max(0, Math.round(baseWidth));
+
+        var left = Math.max(1, curCenter - halfW);
+        var right = Math.min(COLS - 2, curCenter + halfW);
+
+        shape.push({ row: srcRow + i, left: left, right: right });
+      }
+
+      tunnelShapes[zone] = shape;
+      return shape;
+    }
+
+    function isTunnelCell(r, c) {
+      if (r < CLEARING_INTERVAL + CLEARING_HEIGHT) return false;
+      // Determine which zone's tunnel this row could belong to
+      // Tunnel from zone N spans rows [N*25+8, (N+1)*25-1]
+      var zone = Math.floor(r / CLEARING_INTERVAL);
+      // Check if we're in the gap between clearing `zone` bottom and clearing `zone+1` top
+      var tunnelStart = zone * CLEARING_INTERVAL + CLEARING_HEIGHT;
+      var tunnelEnd = (zone + 1) * CLEARING_INTERVAL;
+      if (r < tunnelStart || r >= tunnelEnd) return false;
+      if (zone < 1) return false;
+      var shape = getTunnelShape(zone);
+      var idx = r - tunnelStart;
+      if (idx >= 0 && idx < shape.length) {
+        var s = shape[idx];
+        return c >= s.left && c <= s.right;
+      }
+      return false;
+    }
+
+    function isClearingCell(r, c) {
+      if (r < CLEARING_INTERVAL) return false;
+      var zone = Math.floor(r / CLEARING_INTERVAL);
+      var zoneStart = zone * CLEARING_INTERVAL;
+      var localRow = r - zoneStart;
+      if (localRow < 0 || localRow >= CLEARING_HEIGHT) return false;
+      var shape = getClearingShape(zone);
+      var bounds = shape[localRow];
+      if (!bounds) return false;
+      return c >= bounds.left && c <= bounds.right;
+    }
+
+    function genRow(r) {
+      var row = [];
+      var depth = r;
+      var zone = Math.floor(r / CLEARING_INTERVAL);
+      var zoneStart = zone * CLEARING_INTERVAL;
+      var isNearClearing = (r >= zoneStart - 1 && r <= zoneStart + CLEARING_HEIGHT);
+
+      for (var c = 0; c < COLS; c++) {
+        if (c === 0 || c === COLS - 1) {
+          row[c] = { t: BEDROCK, hp: 999, cr: 0 };
+          continue;
+        }
+        var t;
+        if (depth < 2) { t = E; }
+        else if (isClearingCell(r, c)) { t = E; }
+        else if (isTunnelCell(r, c)) { t = E; }
+        else { t = pickBlock(depth); }
+        row[c] = { t: t, hp: (t === E ? 0 : BDEF[t].hp), cr: 0 };
+      }
+
+      // Place crystal decorations growing from walls into clearing space
+      if (isNearClearing && zone >= 1) {
+        if (!clearingCrystals[zone]) {
+          clearingCrystals[zone] = CRYSTAL_TYPES[Math.floor(seededRand(zone * 53) * CRYSTAL_TYPES.length)];
+        }
+        var ct = clearingCrystals[zone];
+        for (var c = 1; c < COLS - 1; c++) {
+          var isEmpty = row[c].t === E && isClearingCell(r, c);
+          if (!isEmpty) continue;
+          // Check which adjacent sides have solid blocks — generate crystals for each wall
+          var walls = [];
+          if (!isClearingCell(r, c - 1)) walls.push({ dir: 'left', wr: r, wc: c - 1 });
+          if (!isClearingCell(r, c + 1)) walls.push({ dir: 'right', wr: r, wc: c + 1 });
+          if (!isClearingCell(r - 1, c)) walls.push({ dir: 'up', wr: r - 1, wc: c });
+          if (!isClearingCell(r + 1, c)) walls.push({ dir: 'down', wr: r + 1, wc: c });
+          if (walls.length === 0) continue;
+          var seed = r * 1000 + c;
+          for (var wi = 0; wi < walls.length; wi++) {
+            var w = walls[wi];
+            var baseRot, baseAX = c * TILE + TILE / 2, baseAY = r * TILE + TILE / 2;
+            if (w.dir === 'up')    { baseRot = 0;              baseAY = r * TILE + TILE * 0.05; }
+            else if (w.dir === 'down')  { baseRot = Math.PI;        baseAY = r * TILE + TILE * 0.95; }
+            else if (w.dir === 'left')  { baseRot = Math.PI * 0.5;  baseAX = c * TILE + TILE * 0.05; }
+            else                        { baseRot = -Math.PI * 0.5; baseAX = c * TILE + TILE * 0.95; }
+            // 3-5 crystals per wall edge to fully cover the border
+            var count = 3 + Math.floor(seededRand(seed * 43 + wi * 71) * 3);
+            for (var ci = 0; ci < count; ci++) {
+              var cs = seed * 100 + wi * 50 + ci;
+              // Spread along the wall edge
+              var spread, offPerp;
+              if (w.dir === 'up' || w.dir === 'down') {
+                spread = (seededRand(cs * 61) - 0.5) * TILE * 0.9;
+                offPerp = (seededRand(cs * 73) - 0.5) * TILE * 0.15;
+              } else {
+                spread = (seededRand(cs * 61) - 0.5) * TILE * 0.9;
+                offPerp = (seededRand(cs * 73) - 0.5) * TILE * 0.15;
+              }
+              var cx, cy;
+              if (w.dir === 'up' || w.dir === 'down') {
+                cx = baseAX + spread; cy = baseAY + offPerp;
+              } else {
+                cx = baseAX + offPerp; cy = baseAY + spread;
+              }
+              var cRot = baseRot + (seededRand(cs * 97) - 0.5) * 0.6;
+              var cScale = 0.45 + seededRand(cs * 31) * 0.55;
+              crystalDecoList.push({
+                x: cx, y: cy,
+                variant: Math.floor(seededRand(cs * 13) * 2),
+                rotation: cRot,
+                scale: cScale,
+                type: ct,
+                zone: zone,
+                wallRow: w.wr, wallCol: w.wc
+              });
+            }
+          }
+        }
+      }
+
+      // Place crystal decorations in tunnel walls
+      var tunnelZone = Math.floor(r / CLEARING_INTERVAL);
+      var tunnelStart = tunnelZone * CLEARING_INTERVAL + CLEARING_HEIGHT;
+      var tunnelEnd = (tunnelZone + 1) * CLEARING_INTERVAL;
+      if (r >= tunnelStart && r < tunnelEnd && tunnelZone >= 1) {
+        if (!clearingCrystals[tunnelZone]) {
+          clearingCrystals[tunnelZone] = CRYSTAL_TYPES[Math.floor(seededRand(tunnelZone * 53) * CRYSTAL_TYPES.length)];
+        }
+        var tct = clearingCrystals[tunnelZone];
+        for (var c = 1; c < COLS - 1; c++) {
+          if (row[c].t !== E || !isTunnelCell(r, c)) continue;
+          var twalls = [];
+          if (!isTunnelCell(r, c - 1) && !isClearingCell(r, c - 1)) twalls.push({ dir: 'left', wr: r, wc: c - 1 });
+          if (!isTunnelCell(r, c + 1) && !isClearingCell(r, c + 1)) twalls.push({ dir: 'right', wr: r, wc: c + 1 });
+          if (!isTunnelCell(r - 1, c) && !isClearingCell(r - 1, c)) twalls.push({ dir: 'up', wr: r - 1, wc: c });
+          if (!isTunnelCell(r + 1, c) && !isClearingCell(r + 1, c)) twalls.push({ dir: 'down', wr: r + 1, wc: c });
+          if (twalls.length === 0) continue;
+          var tseed = r * 1000 + c + 50000;
+          for (var twi = 0; twi < twalls.length; twi++) {
+            var tw = twalls[twi];
+            var tBaseRot, tBaseAX = c * TILE + TILE / 2, tBaseAY = r * TILE + TILE / 2;
+            if (tw.dir === 'up')         { tBaseRot = 0;              tBaseAY = r * TILE + TILE * 0.05; }
+            else if (tw.dir === 'down')  { tBaseRot = Math.PI;        tBaseAY = r * TILE + TILE * 0.95; }
+            else if (tw.dir === 'left')  { tBaseRot = Math.PI * 0.5;  tBaseAX = c * TILE + TILE * 0.05; }
+            else                         { tBaseRot = -Math.PI * 0.5; tBaseAX = c * TILE + TILE * 0.95; }
+            var tcount = 2 + Math.floor(seededRand(tseed * 43 + twi * 71) * 2);
+            for (var tci = 0; tci < tcount; tci++) {
+              var tcs = tseed * 100 + twi * 50 + tci;
+              var tspread, toffPerp;
+              tspread = (seededRand(tcs * 61) - 0.5) * TILE * 0.9;
+              toffPerp = (seededRand(tcs * 73) - 0.5) * TILE * 0.15;
+              var tcx, tcy;
+              if (tw.dir === 'up' || tw.dir === 'down') { tcx = tBaseAX + tspread; tcy = tBaseAY + toffPerp; }
+              else { tcx = tBaseAX + toffPerp; tcy = tBaseAY + tspread; }
+              crystalDecoList.push({
+                x: tcx, y: tcy,
+                variant: Math.floor(seededRand(tcs * 13) * 2),
+                rotation: tBaseRot + (seededRand(tcs * 97) - 0.5) * 0.6,
+                scale: 0.35 + seededRand(tcs * 31) * 0.4,
+                type: tct,
+                zone: tunnelZone,
+                wallRow: tw.wr, wallCol: tw.wc
+              });
+            }
+          }
+        }
+      }
+
+      // Spawn zombies inside the clearing (last empty row)
+      var lastEmptyRow = zone * CLEARING_INTERVAL + CLEARING_HEIGHT - 1;
+      if (r === lastEmptyRow && zone >= 1 && !clearedZones[zone]) {
+        clearedZones[zone] = true;
+        if (typeof zombies !== 'undefined' && zombies) {
+          var shape = getClearingShape(zone);
+          var bounds = shape[CLEARING_HEIGHT - 1];
+          var numZ = Math.min(MAX_ZOMBIES, 5 + Math.floor(zone));
+          for (var zi = 0; zi < numZ; zi++) {
+            var minC = (bounds ? bounds.left + 1 : 2);
+            var maxC = (bounds ? bounds.right - 1 : COLS - 3);
+            if (minC > maxC) minC = maxC;
+            var zCol = minC + Math.floor(seededRand(zone * 100 + zi * 7) * (maxC - minC + 1));
+            var zx = zCol * TILE + TILE / 2;
+            // Spawn at bottom of clearing space — zombie feet on the floor below
+            var zy = (lastEmptyRow + 1) * TILE;
+            spawnZombie(zx, zy);
+          }
+        }
+        // Spawn bats flying inside the clearing
+        if (typeof bats !== 'undefined' && bats) {
+          var batShape = getClearingShape(zone);
+          var numBats = Math.min(MAX_BATS - bats.length, 3 + Math.floor(zone * 0.5));
+          for (var bi = 0; bi < numBats; bi++) {
+            var midRow = Math.floor(CLEARING_HEIGHT * 0.3 + seededRand(zone * 200 + bi * 13) * CLEARING_HEIGHT * 0.4);
+            var batBounds = batShape[midRow];
+            if (!batBounds) continue;
+            var batCol = batBounds.left + 1 + Math.floor(seededRand(zone * 300 + bi * 17) * (batBounds.right - batBounds.left - 1));
+            var bx = batCol * TILE + TILE / 2;
+            var by = (zone * CLEARING_INTERVAL + midRow) * TILE + TILE / 2;
+            spawnBat(bx, by, zone);
+          }
+        }
+      }
+      return row;
+    }
+
+    // ── Sistema de raridade por profundidade ──
+    // Cada entrada: [tipo, peso] — peso maior = mais comum
+    // A cada 10m de profundidade, blocos mais valiosos vão aparecendo
+    function pickBlock(depth) {
+      var table = [];
+      // Camada 2-4: superfície
+      if (depth < 5) {
+        table = [[GRASS, 30], [DIRT, 50], [STONE, 10], [ANDESITE, 5], [DIORITE, 3], [GRANITE, 2]];
+      }
+      // Camada 5-9: raso
+      else if (depth < 10) {
+        table = [[DIRT, 30], [STONE, 25], [ANDESITE, 12], [DIORITE, 10], [GRANITE, 10], [COBBLE, 8], [COAL, 5]];
+      }
+      // Camada 10-19: minérios básicos
+      else if (depth < 20) {
+        table = [[STONE, 22], [COBBLE, 15], [ANDESITE, 8], [GRANITE, 8], [DIORITE, 5],
+                 [COAL, 15], [COPPER, 12], [IRON, 10], [LAPIS, 3], [GOLD, 2]];
+      }
+      // Camada 20-29: transição
+      else if (depth < 30) {
+        table = [[STONE, 15], [COBBLE, 12], [MOSSY, 8],
+                 [COAL, 8], [COPPER, 10], [IRON, 15], [LAPIS, 8], [GOLD, 10], [REDSTONE, 8], [DIAMOND, 4], [EMERALD, 2]];
+      }
+      // Camada 30-39: profundo
+      else if (depth < 40) {
+        table = [[STONE, 10], [COBBLE, 8], [MOSSY, 8], [OBSIDIAN, 5],
+                 [IRON, 10], [GOLD, 14], [REDSTONE, 14], [LAPIS, 8], [DIAMOND, 12], [EMERALD, 8], [COPPER, 3]];
+      }
+      // Camada 40-49: muito profundo
+      else if (depth < 50) {
+        table = [[STONE, 6], [OBSIDIAN, 12], [MOSSY, 5],
+                 [GOLD, 10], [REDSTONE, 15], [DIAMOND, 18], [EMERALD, 15], [LAPIS, 6], [IRON, 5], [COPPER, 3], [COBBLE, 5]];
+      }
+      // 50+: abismo — progressivamente mais valioso a cada 10m
+      else {
+        var tier = Math.min(10, Math.floor((depth - 50) / 10)); // 0-10
+        var stoneW  = Math.max(2, 8 - tier);
+        var obsW    = 10 + tier;
+        var diaW    = 15 + tier * 2;
+        var emeW    = 12 + tier * 2;
+        var redW    = 10 + tier;
+        var goldW   = Math.max(2, 8 - tier);
+        var lapisW  = Math.max(1, 5 - Math.floor(tier / 2));
+        table = [[STONE, stoneW], [OBSIDIAN, obsW], [MOSSY, 3],
+                 [REDSTONE, redW], [DIAMOND, diaW], [EMERALD, emeW], [GOLD, goldW], [LAPIS, lapisW]];
+      }
+      // Roleta ponderada
+      var total = 0;
+      for (var i = 0; i < table.length; i++) total += table[i][1];
+      var roll = Math.random() * total;
+      var acc = 0;
+      for (var i = 0; i < table.length; i++) {
+        acc += table[i][1];
+        if (roll < acc) return table[i][0];
+      }
+      return table[table.length - 1][0];
+    }
+
+    function ensureRows(fromRow, toRow) {
+      for (var r = fromRow; r <= toRow; r++) {
+        if (!worldMap[r]) worldMap[r] = genRow(r);
+      }
+    }
+
+    function getCell(r, c) {
+      if (c < 0 || c >= COLS) return null;
+      if (!worldMap[r]) worldMap[r] = genRow(r);
+      return worldMap[r][c];
+    }
+
+    // ── Câmera ──────────────────────────────────────────────────────────────────────
+    var camY = 0;
+
+    // ── Física ────────────────────────────────────────────────────────────────────
+    var PICK_HALF = 28;
+
+    var _S = TILE / 16;
+    var PICK_COLL = [
+      { lx: (5 - 8) * _S, ly: (0 - 8) * _S, role: 'tip' },
+      { lx: (11 - 8) * _S, ly: (0 - 8) * _S, role: 'head' },
+      { lx: (14 - 8) * _S, ly: (1 - 8) * _S, role: 'head' },
+      { lx: (15 - 8) * _S, ly: (5 - 8) * _S, role: 'head' },
+      { lx: (15 - 8) * _S, ly: (10 - 8) * _S, role: 'diag' },
+      { lx: (6 - 8) * _S, ly: (8 - 8) * _S, role: 'diag' },
+      { lx: (0 - 8) * _S, ly: (15 - 8) * _S, role: 'tail' },
+      { lx: (1 - 8) * _S, ly: (15 - 8) * _S, role: 'tail' }
+    ];
+
+    var ownerName = ''; // loaded from config
+    var pick = { x: 540, y: 100, vx: 0, vy: 0, ang: 0, spin: 0, stuck: false, stuckTimer: 0, userName: '', userAvatarUrl: '' };
+    if (ownerName) pick.userName = ownerName;
+
+    function spawnPick() {
+      var savedUser = pick.userName;
+      var savedAvatar = pick.userAvatarUrl;
+      pick.x = TILE * 2 + Math.random() * (canvas.width - TILE * 4);
+      pick.y = camY + TILE * 2;
+      pick.vx = (Math.random() - 0.5) * 12;
+      pick.vy = -2 - Math.random() * 8;
+      pick.ang = Math.random() * Math.PI * 2;
+      pick.spin = (Math.random() - 0.5) * 0.4;
+      pick.stuck = false;
+      pick.stuckTimer = 0;
+      pick.userName = savedUser;
+      pick.userAvatarUrl = savedAvatar;
+    }
+
+    function collPoints(p) {
+      var obj = p || pick, cos = Math.cos(obj.ang), sin = Math.sin(obj.ang);
+      return PICK_COLL.map(function (c) {
+        return { x: obj.x + c.lx * cos - c.ly * sin, y: obj.y + c.lx * sin + c.ly * cos, role: c.role };
+      });
+    }
+    function tipPos() { var pts = collPoints(); return pts[0]; }
+    function tailPos() { var pts = collPoints(); return pts[4]; }
+
+    // ── Estado ───────────────────────────────────────────────────────────────────
+    var maxDepth = 0;
+    var parts = [], texts = [], debris = [];
+    var announcements = [];
+    var persistentScores = {};
+
+    var extraPicks = [];
+    var userPicks = [];
+    var lastActivity = {};  // { userName: timestamp }
+    var INACTIVE_MS = 3 * 60 * 1000; // 3 minutes
+    var doublePickActive = false;
+    var doublePickTimer = 0;
+    var DOUBLE_PICK_DURATION = 600;
+
+    var stormActive = false;
+    var stormTimer = 0;
+    var STORM_DURATION = 900;
+
+    var score = 0;
+    var items = [];
+    var explosions = [];
+    var tntBlocks = [];
+    var tntFuseSounds = {};
+    var shakeAmt = 0;
+    var shakeDec = 0.88;
+
+    function restart() {
+      stopBossMusic();
+      score = 0; maxDepth = 0; parts = []; texts = []; debris = []; announcements = [];
+      var ov = document.getElementById('announceOverlay'); if (ov) ov.innerHTML = '';
+      worldMap = {}; explosions = []; tntBlocks = []; items = []; zombies = []; bats = []; clearedZones = {}; clearingShapes = {}; tunnelShapes = {}; crystalDecoList = []; clearingCrystals = {};
+      extraPicks = []; userPicks = []; lastActivity = {};
+      doublePickActive = false; doublePickTimer = 0; updateDoublePickHUD();
+      stormActive = false; stormTimer = 0; updateStormHUD();
+      bgChunks = {}; bgTick = 0;
+      boss = null; bossIntr = null;
+      document.getElementById('depthDisplay').textContent = 'Depth: 0m';
+      document.getElementById('scoreDisplay').textContent = '⛏ 0';
+      ensureRows(0, VIS + 4);
+      spawnPick();
+      // Preserve owner on main pick after restart
+      if (ownerName) {
+        pick.userName = ownerName;
+        pick.userAvatarUrl = pick.userAvatarUrl || '';
+      }
+    }
+
+    function activateDoublePick() {
+      if (doublePickActive) return;
+      doublePickActive = true;
+      doublePickTimer = DOUBLE_PICK_DURATION;
+      if (pick) extraPicks.push({ x: pick.x, y: pick.y - 20, vx: pick.vx - 3, vy: pick.vy - 2, ang: pick.ang, spin: 0.1, stuck: false, stuckTimer: 0 });
+      if (_audioStarted) sfxSkillActivate();
+      updateDoublePickHUD();
+    }
+
+    function activateStorm() {
+      if (stormActive) return;
+      stormActive = true;
+      stormTimer = STORM_DURATION;
+      if (_audioStarted) sfxSkillActivate();
+      updateStormHUD();
+    }
+
+    function applyPhysics(p, r) {
+        if (!p) return false;
+        p.vy += GRAVITY;
+        var speed = Math.sqrt(p.vx * p.vx + p.vy * p.vy);
+        var dmgBase = 0.35 * (currentPickaxe ? currentPickaxe.damage : 1);
+        var hitAny = false;
+
+        // Eixo X
+        p.x += p.vx;
+        var c0 = Math.floor((p.x - r) / TILE), c1 = Math.floor((p.x + r) / TILE);
+        var r0 = Math.floor((p.y - r) / TILE), r1 = Math.floor((p.y + r) / TILE);
+        for (var row = r0; row <= r1; row++) {
+          for (var col = c0; col <= c1; col++) {
+            var cell = getCell(row, col);
+            if (cell && cell.t !== E) {
+              hitBlock(col, row, Math.max(1, Math.floor(speed * dmgBase)), p);
+              if (p.vx > 0) { p.x = col * TILE - r - 1; p.vx = -p.vx * BOUNCE * FRICTION; }
+              else { p.x = (col + 1) * TILE + r + 1; p.vx = -p.vx * BOUNCE * FRICTION; }
+              hitAny = true; break;
+            }
+          }
+          if (hitAny) break;
+        }
+
+        // Eixo Y
+        p.y += p.vy;
+        c0 = Math.floor((p.x - r) / TILE); c1 = Math.floor((p.x + r) / TILE);
+        r0 = Math.floor((p.y - r) / TILE); r1 = Math.floor((p.y + r) / TILE);
+        var hitY = false;
+        for (var row = r0; row <= r1; row++) {
+          for (var col = c0; col <= c1; col++) {
+            var cell = getCell(row, col);
+            if (cell && cell.t !== E) {
+              hitBlock(col, row, Math.max(1, Math.floor(speed * dmgBase)), p);
+              if (p.vy > 0) {
+                p.y = row * TILE - r - 1; p.vy = -p.vy * BOUNCE;
+                if (Math.abs(p.vy) > 0.8) p.vx += (Math.random() - 0.5) * 6; else p.vx *= FRICTION;
+              } else { p.y = (row + 1) * TILE + r + 1; p.vy = -p.vy * BOUNCE; }
+              hitAny = true; hitY = true; break;
+            }
+          }
+          if (hitY) break;
+        }
+
+        if (p.y - r < 0) { p.y = r; p.vy = Math.abs(p.vy) * BOUNCE; }
+        p.ang += p.spin;
+        if (hitAny) p.spin = p.spin * 0.9 + (Math.random() - 0.5) * 0.12; else p.spin *= 0.995;
+        return hitAny;
+      }
+
+      function updateUserPicks() {
+        for (var i = userPicks.length - 1; i >= 0; i--) {
+          var up = userPicks[i];
+          if (up.stuck) {
+            up.stuckTimer++;
+            if (up.stuckTimer > 200) { userPicks.splice(i, 1); continue; }
+            continue;
+          }
+          applyPhysics(up, 28);
+          if (up.isStorm) {
+            up.life--;
+            if (up.life < 0) userPicks.splice(i, 1);
+          }
+        }
+      }
+
+      function updateExtraPicks() {
+        if (doublePickActive) {
+          doublePickTimer--;
+          if (doublePickTimer <= 0) { doublePickActive = false; extraPicks = []; }
+          updateDoublePickHUD();
+        }
+        for (var i = extraPicks.length - 1; i >= 0; i--) {
+          applyPhysics(extraPicks[i], 28);
+        }
+      }
+
+      function spawnItem(x, y, blockType, source) {
+        if (!ITEM_DEFS[blockType]) return;
+        items.push({
+          x: x, y: y,
+          vx: (Math.random() - 0.5) * 10,
+          vy: -4 - Math.random() * 6,
+          t: blockType, wait: 25,
+          ang: Math.random() * Math.PI * 2,
+          spin: (Math.random() - 0.5) * 0.2,
+          owner: source || pick
+        });
+      }
+
+      function updateItems() {
+        for (var i = items.length - 1; i >= 0; i--) {
+          var it = items[i];
+          if (it.wait > 0) { it.wait--; it.vx *= 0.96; it.vy += 0.3; it.x += it.vx; it.y += it.vy; continue; }
+          var target = it.owner || pick;
+          var dx = target.x - it.x, dy = target.y - it.y;
+          var dist = Math.sqrt(dx * dx + dy * dy);
+          if (dist < 45) {
+            var pts = BDEF[it.t].pts || 0;
+            score += pts;
+            spawnText(it.x, it.y, '+' + pts, BDEF[it.t].glow);
+            var tName = target.userName;
+            if (tName) {
+              if (!persistentScores[tName]) persistentScores[tName] = { score: 0, avatar: target.userAvatarUrl || '' };
+              persistentScores[tName].score += pts;
+              if (target !== pick) target.score = (target.score || 0) + pts;
+            }
+            if (_audioStarted) sfxSkillActivate();
+            items.splice(i, 1); continue;
+          }
+          var force = 1.2;
+          it.vx = it.vx * 0.92 + (dx / dist) * force;
+          it.vy = it.vy * 0.92 + (dy / dist) * force;
+          it.x += it.vx; it.y += it.vy;
+          it.ang += it.spin;
+        }
+      }
+
+      function spawnParts(x, y, color, n) {
+        if (parts.length > MAX_PARTS) return;
+        var count = isMobile ? Math.min(n, 3) : n;
+        for (var i = 0; i < count; i++) {
+          var a = Math.random() * Math.PI * 2, s = 1 + Math.random() * 4;
+          parts.push({ x: x, y: y, vx: Math.cos(a) * s, vy: Math.sin(a) * s, life: 1, dec: 0.025 + Math.random() * 0.03, r: 2 + Math.random() * 4, c: color });
+        }
+      }
+
+      function spawnDebris(bx, by, blockType, source) {
+        if (debris.length > MAX_DEBRIS) return;
+        var target = source || pick;
+        var n = isMobile ? 1 : 2 + Math.floor(Math.random() * 3);
+        for (var i = 0; i < n; i++) {
+          var ox = (Math.random() - 0.5) * TILE * 0.6, oy = (Math.random() - 0.5) * TILE * 0.6;
+          var dx = (target ? target.x : bx) - (bx + ox), dy = (target ? target.y : by) - (by + oy);
+          var dist = Math.sqrt(dx * dx + dy * dy) || 1, spd = 1.5 + Math.random() * 2.5;
+          debris.push({
+            x: bx + ox, y: by + oy,
+            vx: (dx / dist) * spd + (Math.random() - 0.5) * 2,
+            vy: (dy / dist) * spd + (Math.random() - 0.5) * 2,
+            t: blockType, size: 10 + Math.random() * 8,
+            life: 1, age: 0, followFrames: 20 + Math.floor(Math.random() * 30),
+            ang: Math.random() * Math.PI * 2, spin: (Math.random() - 0.5) * 0.2,
+            owner: target
+          });
+        }
+      }
+
+      function spawnText(x, y, txt, color) {
+        if (texts.length > MAX_TEXTS) return;
+        texts.push({ x: x, y: y, txt: txt, c: color, life: 1, vy: -1.4 });
+      }
+
+      function hitBlock(col, row, force, source) {
+        var cell = getCell(row, col);
+        if (!cell || cell.t === E) return false;
+        var def = BDEF[cell.t];
+        if (cell.t === BEDROCK) return true;
+        cell.hp -= force;
+        cell.cr = Math.min(1, 1 - cell.hp / def.hp);
+        spawnParts(col * TILE + TILE / 2, row * TILE + TILE / 2, def.glow, 6);
+        spawnDebris(col * TILE + TILE / 2, row * TILE + TILE / 2, cell.t, source);
+        if (Math.random() < 0.18) sfxHit(cell.t);
+        if (cell.hp <= 0) {
+          var pts = def.pts || 0;
+          score += pts;
+          if (ITEM_DEFS[cell.t]) {
+            spawnItem(col * TILE + TILE / 2, row * TILE + TILE / 2, cell.t, source);
+          } else {
+            spawnText(col * TILE + TILE / 2, row * TILE + TILE / 2, '+' + pts, def.glow);
+          }
+          if (source && source.userName) {
+            var player = userPicks.find(function (u) { return u.userName === source.userName; });
+            if (player) player.score = (player.score || 0) + pts;
+            if (!persistentScores[source.userName]) persistentScores[source.userName] = { score: 0, avatar: source.userAvatarUrl || '' };
+            persistentScores[source.userName].score += pts;
+          }
+          sfxBreak(cell.t);
+          cell.t = E; cell.cr = 0;
+          // Chance to spawn zombie — increases with depth
+          var zDepth = row;
+          var zChance = zDepth > 10 ? Math.min(0.04, 0.005 + zDepth * 0.0005) : 0;
+          if (Math.random() < zChance) spawnZombie(col * TILE + TILE / 2, row * TILE);
+        }
+        return true;
+      }
+
+      function update() {
+        if (!pick) return;
+        if (pick.stuck) {
+          pick.stuckTimer++;
+          if (pick.stuckTimer > 100) spawnPick();
+          return;
+        }
+        applyPhysics(pick, 28);
+        var speed = Math.sqrt(pick.vx * pick.vx + pick.vy * pick.vy);
+        var depth = Math.floor(pick.y / TILE);
+        if (depth > maxDepth) { maxDepth = depth; document.getElementById('depthDisplay').textContent = 'Depth: ' + maxDepth + 'm'; }
+        document.getElementById('scoreDisplay').textContent = '⛏ ' + score;
+        var targetCamY = pick.y - canvas.height * 0.50;
+        if (targetCamY < 0) targetCamY = 0;
+        if (targetCamY > camY) { camY += (targetCamY - camY) * 0.08; }
+        var visBot = Math.ceil((camY + canvas.height) / TILE) + 4;
+        ensureRows(0, visBot);
+        var newTopRow = Math.max(0, Math.floor(camY / TILE) - 6);
+        for (var rr = topRow; rr < newTopRow; rr++) { delete worldMap[rr]; }
+        topRow = newTopRow;
+        if (speed < 0.3 && Math.abs(pick.spin) < 0.01) {
+          pick.stuckTimer++; if (pick.stuckTimer > 200) pick.stuck = true;
+        } else { pick.stuckTimer = 0; }
+        updateUserPicks();
+        updateExtraPicks();
+        updateTNTBlocks();
+        updateItems();
+        updateExplosions();
+        updateStorm();
+        updateZombies();
+        checkPickZombieCollisions();
+        updateBats();
+        checkPickBatCollisions();
+        updateBoss();
+        shakeAmt *= shakeDec;
+        if (shakeAmt < 0.3) shakeAmt = 0;
+      }
+
+      function updateExplosions() {
+        for (var i = explosions.length - 1; i >= 0; i--) {
+          var ex = explosions[i];
+          if (ex.timer > 0) { ex.timer--; continue; }
+          ex.frame++;
+          if (ex.frame >= EXPLOSION_TEX.length) explosions.splice(i, 1);
+        }
+      }
+
+      function updateStorm() {
+        if (!stormActive) return;
+        stormTimer--;
+        if (stormTimer <= 0) { stormActive = false; updateStormHUD(); return; }
+        if (stormTimer % 4 === 0) {
+          if (!pick) return;
+          var x = pick.x + (Math.random() - 0.5) * TILE * 10;
+          var y = camY - 50;
+          spawnUserPickaxe('⛈ STORM', '');
+          var last = userPicks[userPicks.length - 1];
+          if (last && last.userName === '⛈ STORM') { last.x = x; last.y = y; last.isStorm = true; last.life = 120; }
+        }
+      }
+
+      function updateFX() {
+        for (var i = parts.length - 1; i >= 0; i--) {
+          var p = parts[i]; p.x += p.vx; p.y += p.vy; p.vy += 0.12; p.life -= p.dec;
+          if (p.life <= 0) parts.splice(i, 1);
+        }
+        for (var j = texts.length - 1; j >= 0; j--) {
+          var t = texts[j]; t.y += t.vy; t.life -= 0.018;
+          if (t.life <= 0) texts.splice(j, 1);
+        }
+        for (var d = debris.length - 1; d >= 0; d--) {
+          var db = debris[d];
+          db.age++; db.ang += db.spin;
+          if (db.age < db.followFrames) {
+            var dTarget = db.owner || pick;
+            var dx = (dTarget ? dTarget.x : db.x) - db.x, dy = (dTarget ? dTarget.y : db.y) - db.y;
+            var dist = Math.sqrt(dx * dx + dy * dy) || 1;
+            db.vx += (dx / dist) * 0.18; db.vy += (dy / dist) * 0.18;
+            var spd = Math.sqrt(db.vx * db.vx + db.vy * db.vy);
+            if (spd > 5) { db.vx = db.vx / spd * 5; db.vy = db.vy / spd * 5; }
+          } else {
+            db.vy += GRAVITY * 0.7; db.vx *= 0.97;
+          }
+          db.x += db.vx; db.y += db.vy;
+          var totalLife = db.followFrames === 0 ? 90 : db.followFrames + 50;
+          db.life = Math.max(0, 1 - db.age / totalLife);
+          if (db.life <= 0) debris.splice(d, 1);
+        }
+        shakeAmt *= shakeDec;
+        if (shakeAmt < 0.3) shakeAmt = 0;
+      }
+
+    // ── Background: Caverna com Cristais ──────────────────────────────────────────
+    var bgTick = 0;
+    var bgChunks = {};
+    var BG_CHUNK = 5;
+
+    function bgRng(seed) {
+      return function () { seed = (seed * 1664525 + 1013904223) & 0xffffffff; return (seed >>> 0) / 0xffffffff; };
+    }
+
+    function bgPalette(depth) {
+      if (depth < 12) return { bg1: '#04081a', bg2: '#080e2a', crystals: ['#1a5aaa', '#2277ee', '#44aaff', '#88ccff', '#cceeff'], vein: '#3366cc', fog: '#1a3a8a' };
+      if (depth < 25) return { bg1: '#0d0420', bg2: '#1a0830', crystals: ['#771aaa', '#8844dd', '#bb66ff', '#ddaaff', '#f0ddff'], vein: '#7722bb', fog: '#3a1a6a' };
+      if (depth < 50) return { bg1: '#001a12', bg2: '#00281e', crystals: ['#007755', '#00bb88', '#33ffcc', '#88ffee', '#ccffee'], vein: '#00aa66', fog: '#004433' };
+      return { bg1: '#1a0800', bg2: '#2e0e00', crystals: ['#aa3300', '#ee5500', '#ff8833', '#ffbb77', '#ffeedd'], vein: '#cc4400', fog: '#441100' };
+    }
+
+    function getBgChunk(ci) {
+      if (bgChunks[ci]) return bgChunks[ci];
+      var rng = bgRng(ci * 6271 + 9337);
+      var chunkH = BG_CHUNK * TILE, chunkY = ci * chunkH, depth = ci * BG_CHUNK;
+      var pal = bgPalette(depth);
+      var items = [];
+      // cristais grandes de fundo
+      for (var i = 0; i < 6; i++) {
+        var x = TILE * 1.5 + rng() * (canvas.width - TILE * 3);
+        var y = chunkY + rng() * chunkH;
+        var h = 60 + rng() * 120, w = 10 + rng() * 18;
+        items.push({ type: 'crystal', x: x, y: y, h: h, w: w, col: pal.crystals[0 | rng() * pal.crystals.length], flip: rng() > 0.5, alpha: 0.12 + rng() * 0.14, phase: rng() * Math.PI * 2, spd: 0.006 + rng() * 0.01, layer: 0 });
+      }
+      // cristais médios
+      for (var i = 0; i < 9; i++) {
+        var x = TILE + rng() * (canvas.width - TILE * 2);
+        var y = chunkY + rng() * chunkH;
+        var h = 30 + rng() * 80, w = 6 + rng() * 13;
+        items.push({ type: 'crystal', x: x, y: y, h: h, w: w, col: pal.crystals[0 | rng() * pal.crystals.length], flip: rng() > 0.5, alpha: rng() * 0.28, phase: rng() * Math.PI * 2, spd: 0.01 + rng() * 0.018, layer: 1 });
+      }
+      // cristais pequenos brilhantes (frente)
+      for (var i = 0; i < 8; i++) {
+        var x = TILE + rng() * (canvas.width - TILE * 2);
+        var y = chunkY + rng() * chunkH;
+        var h = 12 + rng() * 35, w = 3 + rng() * 7;
+        items.push({ type: 'crystal', x: x, y: y, h: h, w: w, col: pal.crystals[0 | rng() * pal.crystals.length], flip: rng() > 0.5, alpha: 0.5 + rng() * 0.45, phase: rng() * Math.PI * 2, spd: 0.018 + rng() * 0.03, layer: 2 });
+      }
+      // veias de minério
+      for (var i = 0; i < 5; i++) {
+        var x1 = rng() * canvas.width, y1 = chunkY + rng() * chunkH;
+        var len = 40 + rng() * 120, ang = (rng() - 0.5) * 1.2;
+        items.push({ type: 'vein', x1: x1, y1: y1, x2: x1 + Math.cos(ang) * len, y2: y1 + Math.sin(ang) * len, col: pal.vein, w: 1 + rng() * 2.5, alpha: 0.08 + rng() * 0.25, phase: rng() * Math.PI * 2, spd: 0.005 + rng() * 0.02 });
+      }
+      // pontos de luz (orbs)
+      for (var i = 0; i < 4; i++) {
+        items.push({ type: 'orb', x: TILE + rng() * (canvas.width - TILE * 2), y: chunkY + rng() * chunkH, r: 18 + rng() * 45, col: pal.crystals[0 | rng() * pal.crystals.length], alpha: 0.06 + rng() * 0.1, phase: rng() * Math.PI * 2, spd: 0.007 + rng() * 0.015 });
+      }
+      bgChunks[ci] = { items: items, pal: pal };
+      return bgChunks[ci];
+    }
+
+    function drawCrystalShape(cx, x, sy, w, h, flip) {
+      cx.beginPath();
+      if (!flip) {
+        cx.moveTo(x, sy); cx.lineTo(x - w / 2, sy + h * 0.22);
+        cx.lineTo(x - w * 0.4, sy + h * 0.55); cx.lineTo(x - w / 2, sy + h * 0.78);
+        cx.lineTo(x, sy + h); cx.lineTo(x + w / 2, sy + h * 0.78);
+        cx.lineTo(x + w * 0.4, sy + h * 0.55); cx.lineTo(x + w / 2, sy + h * 0.22);
+      } else {
+        cx.moveTo(x, sy + h); cx.lineTo(x - w / 2, sy + h * 0.78);
+        cx.lineTo(x - w * 0.4, sy + h * 0.45); cx.lineTo(x - w / 2, sy + h * 0.22);
+        cx.lineTo(x, sy); cx.lineTo(x + w / 2, sy + h * 0.22);
+        cx.lineTo(x + w * 0.4, sy + h * 0.45); cx.lineTo(x + w / 2, sy + h * 0.78);
+      }
+      cx.closePath();
+    }
+
+    function drawBackground() {
+      bgTick++;
+      var W = canvas.width, H = canvas.height;
+      var t = Math.min(1, camY / (60 * TILE));
+
+      // gradiente de fundo
+      var chunkMid = Math.floor((camY / TILE + VIS / 2) / BG_CHUNK);
+      var pal = (getBgChunk(chunkMid)).pal;
+      var grad = ctx.createLinearGradient(0, 0, 0, H);
+      grad.addColorStop(0, pal.bg1); grad.addColorStop(0.6, pal.bg2); grad.addColorStop(1, pal.bg1);
+      ctx.fillStyle = grad; ctx.fillRect(0, 0, W, H);
+
+      // Mobile: skip heavy crystal/vein/orb rendering
+      if (isMobile) {
+        // Simple fog only
+        var fogGrad = ctx.createLinearGradient(0, 0, 0, H);
+        fogGrad.addColorStop(0, pal.fog + 'cc');
+        fogGrad.addColorStop(0.15, 'transparent');
+        fogGrad.addColorStop(0.85, 'transparent');
+        fogGrad.addColorStop(1, pal.fog + 'cc');
+        ctx.fillStyle = fogGrad; ctx.globalAlpha = 0.45;
+        ctx.fillRect(0, 0, W, H);
+        ctx.globalAlpha = 1;
+        return;
+      }
+
+      var chunkStart = Math.floor((camY / TILE) / BG_CHUNK) - 1;
+      var chunkEnd = Math.ceil(((camY + H) / TILE) / BG_CHUNK) + 1;
+
+      // layer 0: cristais grandes (mais escuros, atrás)
+      for (var ci = chunkStart; ci <= chunkEnd; ci++) {
+        var chunk = getBgChunk(ci);
+        for (var i = 0; i < chunk.items.length; i++) {
+          var it = chunk.items[i];
+          if (it.type !== 'crystal' || it.layer !== 0) continue;
+          var sy = it.y - camY;
+          if (sy + it.h < -5 || sy > H + 5) continue;
+          var pulse = (Math.sin(bgTick * it.spd + it.phase) + 1) * 0.5;
+          var a = it.alpha * (0.7 + pulse * 0.3);
+          drawCrystalShape(ctx, it.x, sy, it.w, it.h, it.flip);
+          ctx.fillStyle = it.col; ctx.globalAlpha = a; ctx.fill();
+        }
+      }
+
+      // orbs de luz
+      for (var ci = chunkStart; ci <= chunkEnd; ci++) {
+        var chunk = getBgChunk(ci);
+        for (var i = 0; i < chunk.items.length; i++) {
+          var it = chunk.items[i];
+          if (it.type !== 'orb') continue;
+          var sy = it.y - camY;
+          if (sy + it.r < -5 || sy - it.r > H + 5) continue;
+          var pulse = (Math.sin(bgTick * it.spd + it.phase) + 1) * 0.5;
+          var orbR = it.r * (1 + pulse * 0.3);
+          ctx.fillStyle = it.col; ctx.globalAlpha = it.alpha * (0.6 + pulse * 0.4);
+          ctx.beginPath(); ctx.arc(it.x, sy, orbR, 0, Math.PI * 2); ctx.fill();
+        }
+      }
+
+      // veias de minério
+      for (var ci = chunkStart; ci <= chunkEnd; ci++) {
+        var chunk = getBgChunk(ci);
+        for (var i = 0; i < chunk.items.length; i++) {
+          var it = chunk.items[i];
+          if (it.type !== 'vein') continue;
+          var sy1 = it.y1 - camY, sy2 = it.y2 - camY;
+          if (Math.max(sy1, sy2) < -5 || Math.min(sy1, sy2) > H + 5) continue;
+          var pulse = (Math.sin(bgTick * it.spd + it.phase) + 1) * 0.5;
+          ctx.strokeStyle = it.col; ctx.lineWidth = it.w * (0.8 + pulse * 0.5);
+          ctx.globalAlpha = it.alpha * (0.5 + pulse * 0.5);
+          ctx.lineCap = 'round';
+          ctx.beginPath(); ctx.moveTo(it.x1, sy1); ctx.lineTo(it.x2, sy2); ctx.stroke();
+          ctx.strokeStyle = '#ffffff'; ctx.lineWidth = it.w * 0.3;
+          ctx.globalAlpha = it.alpha * pulse * 0.6;
+          ctx.beginPath(); ctx.moveTo(it.x1, sy1); ctx.lineTo(it.x2, sy2); ctx.stroke();
+        }
+      }
+
+      // layers 1 e 2: cristais médios e pequenos
+      for (var layer = 1; layer <= 2; layer++) {
+        for (var ci = chunkStart; ci <= chunkEnd; ci++) {
+          var chunk = getBgChunk(ci);
+          for (var i = 0; i < chunk.items.length; i++) {
+            var it = chunk.items[i];
+            if (it.type !== 'crystal' || it.layer !== layer) continue;
+            var sy = it.y - camY;
+            if (sy + it.h < -5 || sy > H + 5) continue;
+            var pulse = (Math.sin(bgTick * it.spd + it.phase) + 1) * 0.5;
+            var a = it.alpha * (0.7 + pulse * 0.3);
+            drawCrystalShape(ctx, it.x, sy, it.w, it.h, it.flip);
+            ctx.fillStyle = it.col; ctx.globalAlpha = a; ctx.fill();
+          }
+        }
+      }
+
+      // névoa de profundidade nas bordas
+      var fogGrad = ctx.createLinearGradient(0, 0, 0, H);
+      fogGrad.addColorStop(0, pal.fog + 'cc');
+      fogGrad.addColorStop(0.15, 'transparent');
+      fogGrad.addColorStop(0.85, 'transparent');
+      fogGrad.addColorStop(1, pal.fog + 'cc');
+      ctx.fillStyle = fogGrad; ctx.globalAlpha = 0.45;
+      ctx.fillRect(0, 0, W, H);
+      ctx.globalAlpha = 1;
+    }
+
+    function draw() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      drawBackground(); // caverna de cristais
+      ctx.save();
+      var sx = shakeAmt > 0 ? (Math.random() - 0.5) * 2 * shakeAmt : 0;
+      var sy = shakeAmt > 0 ? (Math.random() - 0.5) * 2 * shakeAmt : 0;
+      ctx.translate(sx, sy - camY); // aplica câmera + tremor
+
+      // linhas visíveis
+      var rStart = Math.floor(camY / TILE);
+      var rEnd = Math.ceil((camY + canvas.height) / TILE) + 1;
+
+      for (var r = rStart; r <= rEnd; r++) {
+        for (var c = 0; c < COLS; c++) {
+          var cell = getCell(r, c);
+          if (!cell || cell.t === E) continue;
+          var x = c * TILE;
+          var y = r * TILE;
+          var tex = BTEX[cell.t];
+          if (tex && tex.complete && tex.naturalWidth > 0) {
+            ctx.drawImage(tex, x - 0.5, y - 0.5, TILE + 1, TILE + 1);
+          } else {
+            ctx.fillStyle = BDEF[cell.t].color;
+            ctx.fillRect(x - 0.5, y - 0.5, TILE + 1, TILE + 1);
+          }
+          if (cell.cr > 0.01) {
+            var stage = Math.min(9, Math.floor(cell.cr * 10));
+            var dtex = DESTROY_TEX[stage];
+            if (dtex && dtex.complete && dtex.naturalWidth > 0) {
+              ctx.drawImage(dtex, x, y, TILE, TILE);
+            }
+          }
+        }
+      }
+
+      // Crystal decorations growing from clearing walls
+      var viewTop = camY - TILE * 2;
+      var viewBot = camY + canvas.height + TILE * 2;
+      ctx.globalAlpha = 0.9;
+      for (var ci = crystalDecoList.length - 1; ci >= 0; ci--) {
+        var cd = crystalDecoList[ci];
+        if (cd.y < viewTop || cd.y > viewBot) continue;
+        // Remove crystal if its wall block was destroyed (check every ~30 frames to save perf)
+        if ((bgTick + ci) % 30 === 0) {
+          var wCell = getCell(cd.wallRow, cd.wallCol);
+          if (!wCell || wCell.t === E) { crystalDecoList.splice(ci, 1); continue; }
+        }
+        var sprites = crystalSprites[cd.type];
+        if (!sprites) continue;
+        var cimg = sprites[cd.variant];
+        if (!cimg || !cimg.complete) continue;
+        var sz = TILE * cd.scale;
+        ctx.save();
+        ctx.translate(cd.x, cd.y);
+        ctx.rotate(cd.rotation);
+        ctx.drawImage(cimg, -sz / 2, -sz * 0.8, sz, sz);
+        ctx.restore();
+      }
+      ctx.globalAlpha = 1;
+
+      // partículas
+      for (var i = 0; i < parts.length; i++) {
+        var p = parts[i];
+        ctx.globalAlpha = p.life; ctx.fillStyle = p.c;
+        ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2); ctx.fill();
+      }
+      ctx.globalAlpha = 1;
+
+      // detritos de blocos
+      for (var d = 0; d < debris.length; d++) {
+        var db = debris[d];
+        var tex = BTEX[db.t];
+        ctx.save();
+        ctx.globalAlpha = db.life * 0.85; ctx.translate(db.x, db.y);
+        ctx.rotate(db.ang);
+        if (tex && tex.complete && tex.naturalWidth > 0) {
+          ctx.drawImage(tex, -db.size / 2, -db.size / 2, db.size, db.size);
+        } else {
+          ctx.fillStyle = BDEF[db.t] ? BDEF[db.t].color : '#888';
+          ctx.fillRect(-db.size / 2, -db.size / 2, db.size, db.size);
+        }
+        ctx.restore();
+      }
+      ctx.globalAlpha = 1;
+
+      // itens colecionáveis
+      for (var i = 0; i < items.length; i++) {
+        var it = items[i];
+        var itex = ITEX[it.t];
+        if (itex && itex.complete && itex.naturalWidth > 0) {
+          ctx.save();
+          ctx.translate(it.x, it.y);
+          ctx.rotate(it.ang);
+          ctx.shadowBlur = 0;
+          ctx.drawImage(itex, -16, -16, 32, 32);
+          ctx.restore();
+        }
+      }
+
+      // blocos TNT caindo
+      for (var i = 0; i < tntBlocks.length; i++) {
+        var b = tntBlocks[i];
+        var glowSpeed = b.fuse <= 1 ? 8 : b.fuse <= 3 ? 4 : 1.5;
+        var glow = (Math.sin(b.blinkTimer * 0.1 * glowSpeed) + 1) / 2;
+        var drawSize = b.mega ? TILE * 1.8 : TILE;
+        var tex = b.mega ? MEGA_TNT_TEX : TNT_TEX;
+        ctx.save();
+        ctx.translate(b.x, b.y);
+        ctx.rotate(b.ang || 0);
+        if (b.mega) {
+          if (SHADOW_ENABLED) { ctx.shadowBlur = 15 + glow * 60; ctx.shadowColor = 'rgba(' + Math.floor(120 + glow * 80) + ',0,255,1)'; }
+        } else {
+          if (SHADOW_ENABLED) { ctx.shadowBlur = 10 + glow * 40; ctx.shadowColor = 'rgba(255,' + Math.floor(80 + glow * 100) + ',0,1)'; }
+        }
+        if (tex && tex.complete && tex.naturalWidth > 0) {
+          ctx.drawImage(tex, -drawSize / 2, -drawSize / 2, drawSize, drawSize);
+        } else {
+          ctx.fillStyle = b.mega ? '#880088' : '#cc0000';
+          ctx.fillRect(-drawSize / 2, -drawSize / 2, drawSize, drawSize);
+        }
+        ctx.restore();
+
+        // Nome e Avatar do mensageiro da TNT
+        if (b.userName) {
+          ctx.save();
+          var avImg = avatarCache[b.avatarUrl];
+          var avSize = 32;
+          var avY = b.y - drawSize / 2 - 28;
+          if (avImg && avImg.complete && avImg.naturalWidth > 0) {
+            ctx.save();
+            ctx.beginPath(); ctx.arc(b.x - 5 - avSize / 2, avY, avSize / 2, 0, Math.PI * 2); ctx.clip();
+            ctx.drawImage(avImg, b.x - 5 - avSize, avY - avSize / 2, avSize, avSize);
+            ctx.restore();
+            ctx.strokeStyle = '#fff'; ctx.lineWidth = 2;
+            ctx.beginPath(); ctx.arc(b.x - 5 - avSize / 2, avY, avSize / 2, 0, Math.PI * 2); ctx.stroke();
+          }
+          ctx.fillStyle = '#fff'; ctx.font = 'bold 16px Arial'; ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+          if (SHADOW_ENABLED) { ctx.shadowBlur = 4; ctx.shadowColor = '#000'; }
+          ctx.fillText(b.userName, b.x + 5, avY);
+          ctx.restore();
+        }
+      }
+
+      // explosões TNT
+      for (var k = 0; k < explosions.length; k++) {
+        var ex = explosions[k];
+        var etex = EXPLOSION_TEX[ex.frame];
+        if (etex && etex.complete && etex.naturalWidth > 0) {
+          var esize = (ex.mega ? MEGA_TNT_RADIUS : TNT_RADIUS) * TILE * 2.5;
+          ctx.globalAlpha = (1 - ex.frame / EXPLOSION_TEX.length) * 0.5;
+          ctx.drawImage(etex, ex.x - esize / 2, ex.y - esize / 2, esize, esize);
+        }
+      }
+      ctx.globalAlpha = 1;
+
+      // zombies
+      drawZombies();
+
+      // bats
+      drawBats();
+
+      // textos flutuantes
+      for (var j = 0; j < texts.length; j++) {
+        var t = texts[j];
+        ctx.globalAlpha = t.life; ctx.font = 'bold 13px Arial';
+        ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillStyle = t.c;
+        ctx.fillText(t.txt, t.x, t.y);
+      }
+      ctx.globalAlpha = 1; ctx.shadowBlur = 0;
+
+      // picareta principal - sprite
+      if (pick) {
+        ctx.save();
+        ctx.translate(pick.x, pick.y);
+        ctx.rotate(pick.ang);
+        var pimg = currentPickaxe.imgObj;
+        if (pimg && pimg.complete && pimg.naturalWidth > 0) {
+          ctx.drawImage(pimg, -PICK_HALF, -PICK_HALF, PICK_HALF * 2, PICK_HALF * 2);
+        } else {
+          ctx.fillStyle = currentPickaxe.color;
+          ctx.fillRect(-PICK_HALF, -PICK_HALF, PICK_HALF * 2, PICK_HALF * 2);
+        }
+        ctx.restore();
+
+        // Owner name & avatar on main pickaxe
+        if (pick.userName) {
+          ctx.save();
+          var ownerAvImg = avatarCache[pick.userAvatarUrl];
+          var oAvSize = isMobile ? 32 : 48;
+          var oAvY = pick.y - PICK_HALF - (isMobile ? 30 : 44);
+          if (ownerAvImg && ownerAvImg.complete && ownerAvImg.naturalWidth > 0) {
+            ctx.save();
+            ctx.beginPath(); ctx.arc(pick.x - 10 - oAvSize / 2, oAvY, oAvSize / 2, 0, Math.PI * 2); ctx.clip();
+            ctx.drawImage(ownerAvImg, pick.x - 10 - oAvSize, oAvY - oAvSize / 2, oAvSize, oAvSize);
+            ctx.restore();
+            ctx.strokeStyle = '#ffdd44'; ctx.lineWidth = 2;
+            ctx.beginPath(); ctx.arc(pick.x - 10 - oAvSize / 2, oAvY, oAvSize / 2, 0, Math.PI * 2); ctx.stroke();
+          }
+          ctx.fillStyle = '#ffdd44'; ctx.font = isMobile ? 'bold 16px Arial' : 'bold 24px Arial'; ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+          if (SHADOW_ENABLED) { ctx.shadowBlur = 6; ctx.shadowColor = '#000'; }
+          ctx.fillText(pick.userName, pick.x + 10, oAvY);
+          ctx.restore();
+        }
+      }
+
+      // picaretas extras (skill dupla)
+      for (var ei = 0; ei < extraPicks.length; ei++) {
+        var ep = extraPicks[ei];
+        ctx.save();
+        ctx.translate(ep.x, ep.y);
+        ctx.rotate(ep.ang);
+        if (SHADOW_ENABLED) {
+          var pulse = doublePickTimer > 0 ? (Math.sin(doublePickTimer * 0.15) * 0.5 + 0.5) : 1;
+          ctx.shadowBlur = 8 + pulse * 6;
+          ctx.shadowColor = '#44ddff';
+        }
+        var epimg = currentPickaxe.imgObj;
+        if (epimg && epimg.complete && epimg.naturalWidth > 0) {
+          ctx.drawImage(epimg, -PICK_HALF, -PICK_HALF, PICK_HALF * 2, PICK_HALF * 2);
+        } else {
+          ctx.fillStyle = '#44ddff';
+          ctx.fillRect(-PICK_HALF, -PICK_HALF, PICK_HALF * 2, PICK_HALF * 2);
+        }
+        ctx.restore();
+      }
+
+      // picaretas de outros usuários (permanentes com avatar)
+      for (var ui = 0; ui < userPicks.length; ui++) {
+        var up = userPicks[ui];
+        ctx.save();
+        ctx.translate(up.x, up.y);
+        ctx.rotate(up.ang);
+        if (SHADOW_ENABLED) { ctx.shadowBlur = 12; ctx.shadowColor = up.color || '#00ff88'; }
+        var uImg = currentPickaxe.imgObj;
+        if (uImg && uImg.complete && uImg.naturalWidth > 0) {
+          ctx.drawImage(uImg, -PICK_HALF, -PICK_HALF, PICK_HALF * 2, PICK_HALF * 2);
+        }
+        ctx.restore();
+
+        // nome e avatar
+        ctx.save();
+        var avImg = avatarCache[up.userAvatarUrl];
+        var avSize = isMobile ? 32 : 48;
+        var avY = up.y - PICK_HALF - (isMobile ? 30 : 44);
+        if (avImg && avImg.complete && avImg.naturalWidth > 0) {
+          ctx.save();
+          ctx.beginPath(); ctx.arc(up.x - 10 - avSize / 2, avY, avSize / 2, 0, Math.PI * 2); ctx.clip();
+          ctx.drawImage(avImg, up.x - 10 - avSize, avY - avSize / 2, avSize, avSize);
+          ctx.restore();
+          ctx.strokeStyle = up.color || '#fff'; ctx.lineWidth = 2;
+          ctx.beginPath(); ctx.arc(up.x - 10 - avSize / 2, avY, avSize / 2, 0, Math.PI * 2); ctx.stroke();
+        }
+        ctx.fillStyle = '#fff'; ctx.font = isMobile ? 'bold 16px Arial' : 'bold 24px Arial'; ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+        if (SHADOW_ENABLED) { ctx.shadowBlur = 6; ctx.shadowColor = '#000'; }
+        ctx.fillText(up.userName, up.x + 10, avY);
+        ctx.restore();
+      }
+
+      ctx.restore(); // fim da câmera
+
+      drawBoss(); // usa coordenadas de tela
+    }
+
+    // ── Loop ─────────────────────────────────────────────────────────────────────
+    function loop() {
+      update();
+      updateFX();
+      draw();
+      requestAnimationFrame(loop);
+    }
+
+    // ── ZOMBIES ────────────────────────────────────────────────────────────────
+    var zombies = [];
+    var MAX_ZOMBIES = 8;
+    var ZOMBIE_SIZE = TILE;
+
+    // Preload zombie sprites
+    var ZOMBIE_TYPES = ['Zombie1', 'Zombie2', 'Zombie3', 'Zombie4'];
+    var ZOMBIE_ANIMS = {
+      idle:   { prefix: 'Idle',   count: 4,  speed: 0.08 },
+      walk:   { prefix: 'Walk',   count: 6,  speed: 0.12 },
+      run:    { prefix: 'Run',    count: 10, speed: 0.18 },
+      attack: { prefix: 'Attack', count: 6,  speed: 0.15 },
+      hurt:   { prefix: 'Hurt',   count: 5,  speed: 0.12 },
+      dead:   { prefix: 'Dead',   count: 8,  speed: 0.10 },
+      jump:   { prefix: 'Jump',   count: 7,  speed: 0.12 }
+    };
+    var zombieSprites = {};
+    ZOMBIE_TYPES.forEach(function (zt) {
+      zombieSprites[zt] = {};
+      Object.keys(ZOMBIE_ANIMS).forEach(function (anim) {
+        var a = ZOMBIE_ANIMS[anim];
+        zombieSprites[zt][anim] = [];
+        for (var i = 1; i <= a.count; i++) {
+          var img = new Image();
+          var prefix = a.prefix;
+          if (zt === 'Zombie3' && anim === 'attack' && i === 6) {
+            img.src = zt + '/animation/Attaxk6.png';
+          } else if (zt === 'Zombie4') {
+            img.src = zt + '/animation/' + prefix + '_' + i + '.png';
+          } else {
+            img.src = zt + '/animation/' + prefix + i + '.png';
+          }
+          zombieSprites[zt][anim].push(img);
+        }
+      });
+    });
+
+    // ── BAT / VESP SYSTEM (alternating per clearing) ──────────────────────
+    var bats = [];
+    var MAX_BATS = 12;
+    var BAT_SIZE = TILE * 1.05;
+
+    var FLYER_TYPES = ['bat', 'vesp', 'marimbondo'];
+    var BAT_ANIMS = {
+      fly:     { prefix: 'Fly',     count: 18, speed: 0.25 },
+      idle:    { prefix: 'Idle',    count: 18, speed: 0.12 },
+      attack:  { prefix: 'Attack',  count: 18, speed: 0.20 },
+      dying:   { prefix: 'Dying',   count: 18, speed: 0.12 },
+      fall:    { prefix: 'Fall',    count: 18, speed: 0.15 }
+    };
+    // Sprites indexed by flyer type
+    var flyerSprites = {};
+    (function() {
+      FLYER_TYPES.forEach(function(ft) {
+        flyerSprites[ft] = {};
+        Object.keys(BAT_ANIMS).forEach(function(anim) {
+          var a = BAT_ANIMS[anim];
+          flyerSprites[ft][anim] = [];
+          for (var i = 0; i < a.count; i++) {
+            var img = new Image();
+            var frame = String(i);
+            while (frame.length < 3) frame = '0' + frame;
+            img.src = ft + '/' + a.prefix + '/0_Monster_' + a.prefix + '_' + frame + '.png';
+            flyerSprites[ft][anim].push(img);
+          }
+        });
+      });
+    })();
+
+    function spawnBat(wx, wy, zone) {
+      if (bats.length >= MAX_BATS) return;
+      // Alternate: cycle bat → vesp → marimbondo per zone
+      var flyType = FLYER_TYPES[zone % FLYER_TYPES.length];
+      var shape = getClearingShape(zone);
+      var zoneStart = zone * CLEARING_INTERVAL;
+      // Find clearing bounds in world coords
+      var minY = Infinity, maxY = -Infinity, minX = Infinity, maxX = -Infinity;
+      for (var lr = 0; lr < CLEARING_HEIGHT; lr++) {
+        var b = shape[lr];
+        if (!b) continue;
+        var ry = (zoneStart + lr) * TILE;
+        if (ry < minY) minY = ry;
+        if (ry + TILE > maxY) maxY = ry + TILE;
+        if (b.left * TILE < minX) minX = b.left * TILE;
+        if ((b.right + 1) * TILE > maxX) maxX = (b.right + 1) * TILE;
+      }
+      bats.push({
+        x: wx, y: wy,
+        vx: (Math.random() - 0.5) * 2,
+        vy: (Math.random() - 0.5) * 1.5,
+        state: 'fly',
+        anim: Math.random() * 18,
+        dir: Math.random() < 0.5 ? -1 : 1,
+        hp: 2, maxHp: 2,
+        hurtTimer: 0,
+        deadTimer: 0,
+        zone: zone,
+        flyType: flyType,
+        boundsMinX: minX + TILE, boundsMaxX: maxX - TILE,
+        boundsMinY: minY + TILE * 0.5, boundsMaxY: maxY - TILE,
+        flyPhase: Math.random() * Math.PI * 2,
+        flyFreq: 0.03 + Math.random() * 0.02,
+        targetX: wx, targetY: wy,
+        retargetTimer: 0,
+        pts: 30 + Math.floor(zone * 5)
+      });
+    }
+
+    function updateBats() {
+      for (var i = bats.length - 1; i >= 0; i--) {
+        var b = bats[i];
+
+        // Remove if too far above camera
+        if (b.y < camY - 500) { bats.splice(i, 1); continue; }
+
+        // ── DEAD ──
+        if (b.state === 'dead') {
+          b.deadTimer++;
+          b.anim += BAT_ANIMS.dying.speed;
+          if (b.anim >= BAT_ANIMS.dying.count) b.anim = BAT_ANIMS.dying.count - 0.01;
+          // Fall with gravity
+          b.vy += 0.2;
+          b.y += b.vy;
+          b.x += b.vx * 0.95;
+          if (b.deadTimer > 90) { bats.splice(i, 1); }
+          continue;
+        }
+
+        // ── HURT ──
+        if (b.state === 'hurt') {
+          b.hurtTimer--;
+          b.anim += BAT_ANIMS.fall.speed;
+          if (b.anim >= BAT_ANIMS.fall.count) b.anim = 0;
+          b.vy += 0.05;
+          b.y += b.vy;
+          b.x += b.vx * 0.9;
+          if (b.hurtTimer <= 0) {
+            b.state = 'fly'; b.anim = 0;
+          }
+          continue;
+        }
+
+        // ── FLY: erratic movement within clearing bounds ──
+        b.flyPhase += b.flyFreq;
+        b.retargetTimer--;
+        if (b.retargetTimer <= 0) {
+          // Pick new target within bounds
+          b.targetX = b.boundsMinX + Math.random() * (b.boundsMaxX - b.boundsMinX);
+          b.targetY = b.boundsMinY + Math.random() * (b.boundsMaxY - b.boundsMinY);
+          b.retargetTimer = 60 + Math.floor(Math.random() * 120);
+        }
+
+        // Steer toward target
+        var dx = b.targetX - b.x;
+        var dy = b.targetY - b.y;
+        var dist = Math.sqrt(dx * dx + dy * dy) || 1;
+        var accel = 0.12;
+        b.vx += (dx / dist) * accel;
+        b.vy += (dy / dist) * accel + Math.sin(b.flyPhase) * 0.08;
+
+        // Speed limit
+        var spd = Math.sqrt(b.vx * b.vx + b.vy * b.vy);
+        var maxSpd = 2.5;
+        if (spd > maxSpd) { b.vx = (b.vx / spd) * maxSpd; b.vy = (b.vy / spd) * maxSpd; }
+
+        // Damping
+        b.vx *= 0.97;
+        b.vy *= 0.97;
+
+        b.x += b.vx;
+        b.y += b.vy;
+
+        // Clamp to bounds
+        if (b.x < b.boundsMinX) { b.x = b.boundsMinX; b.vx = Math.abs(b.vx); }
+        if (b.x > b.boundsMaxX) { b.x = b.boundsMaxX; b.vx = -Math.abs(b.vx); }
+        if (b.y < b.boundsMinY) { b.y = b.boundsMinY; b.vy = Math.abs(b.vy); }
+        if (b.y > b.boundsMaxY) { b.y = b.boundsMaxY; b.vy = -Math.abs(b.vy); }
+
+        // Direction based on velocity
+        if (Math.abs(b.vx) > 0.3) b.dir = b.vx > 0 ? 1 : -1;
+
+        // Animate
+        b.anim += BAT_ANIMS.fly.speed;
+        if (b.anim >= BAT_ANIMS.fly.count) b.anim = 0;
+      }
+    }
+
+    function checkPickBatCollisions() {
+      var PICK_R = 28;
+      var BR = BAT_SIZE * 0.4;
+      var allPicks = [pick].concat(userPicks, extraPicks);
+      for (var pi = 0; pi < allPicks.length; pi++) {
+        var p = allPicks[pi];
+        if (!p || p.stuck) continue;
+        var pSpeed = Math.sqrt(p.vx * p.vx + p.vy * p.vy);
+        if (pSpeed < 1.2) continue;
+        for (var bi = bats.length - 1; bi >= 0; bi--) {
+          var b = bats[bi];
+          if (b.state === 'dead' || b.state === 'hurt') continue;
+          var dx = p.x - b.x, dy = p.y - b.y;
+          var dist = Math.sqrt(dx * dx + dy * dy);
+          if (dist < PICK_R + BR) {
+            var nx = dist > 0 ? dx / dist : 0;
+            var ny = dist > 0 ? dy / dist : -1;
+            var bounceForce = Math.max(2.5, pSpeed * 0.5);
+            p.vx = nx * bounceForce;
+            p.vy = ny * bounceForce - 1.5;
+            p.spin += (Math.random() - 0.5) * 0.2;
+            p.x = b.x + nx * (PICK_R + BR + 1);
+            p.y = b.y + ny * (PICK_R + BR + 1);
+            b.hp -= 1;
+            b.hurtTimer = 10;
+            b.anim = 0;
+            b.vx += nx * -2;
+            b.vy -= 1;
+            sfxBatHurt();
+            spawnText(b.x, b.y - BAT_SIZE * 0.4, '-1', '#ff88cc');
+            if (b.hp <= 0) {
+              b.state = 'dead'; b.anim = 0; b.deadTimer = 0;
+              score += b.pts;
+              if (p.userName) {
+                if (!persistentScores[p.userName]) persistentScores[p.userName] = { score: 0, avatar: p.userAvatarUrl || '' };
+                persistentScores[p.userName].score += b.pts;
+              }
+              spawnText(b.x, b.y - BAT_SIZE * 0.5, '+' + b.pts, '#ffdd44');
+              sfxBatDeath();
+            } else {
+              b.state = 'hurt';
+            }
+            break;
+          }
+        }
+      }
+    }
+
+    function drawBats() {
+      for (var i = 0; i < bats.length; i++) {
+        var b = bats[i];
+        var animKey = b.state;
+        if (animKey === 'hurt') animKey = 'fall';
+        if (animKey === 'dead') animKey = 'dying';
+        var spriteSet = flyerSprites[b.flyType] || flyerSprites.bat;
+        var sprites = spriteSet[animKey] || spriteSet.fly;
+        var frame = Math.min(Math.floor(b.anim), sprites.length - 1);
+        if (frame < 0) frame = 0;
+        var img = sprites[frame];
+        if (!img || !img.complete || !img.naturalWidth) continue;
+
+        ctx.save();
+        ctx.translate(b.x, b.y);
+        if (b.dir < 0) ctx.scale(-1, 1);
+
+        if (b.state === 'hurt' && b.hurtTimer % 3 < 2) ctx.globalAlpha = 0.5;
+        if (b.state === 'dead') ctx.globalAlpha = Math.max(0, 1 - b.deadTimer / 90);
+
+        var w = BAT_SIZE, h = BAT_SIZE;
+        ctx.drawImage(img, -w / 2, -h / 2, w, h);
+
+        // HP bar
+        if (b.state !== 'dead' && b.hp < b.maxHp) {
+          ctx.globalAlpha = 0.7;
+          if (b.dir < 0) ctx.scale(-1, 1);
+          var barW = 30, barH = 4;
+          var barX = -barW / 2, barY = -h / 2 - 8;
+          ctx.fillStyle = '#333'; ctx.fillRect(barX, barY, barW, barH);
+          ctx.fillStyle = '#ff66aa'; ctx.fillRect(barX, barY, barW * (b.hp / b.maxHp), barH);
+        }
+
+        ctx.globalAlpha = 1;
+        ctx.restore();
+      }
+    }
+
+    // Bat sound effects (high-pitched squeaks)
+    function sfxBatHurt() {
+      if (!_audioStarted) return;
+      var ac = getAC(), t = ac.currentTime;
+      var o = ac.createOscillator(), g = ac.createGain();
+      o.type = 'square';
+      o.frequency.setValueAtTime(900, t);
+      o.frequency.linearRampToValueAtTime(1400, t + 0.03);
+      o.frequency.linearRampToValueAtTime(600, t + 0.1);
+      g.gain.setValueAtTime(0.08, t);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + 0.12);
+      o.connect(g); g.connect(ac.destination);
+      o.start(t); o.stop(t + 0.12);
+    }
+
+    function sfxBatDeath() {
+      if (!_audioStarted) return;
+      var ac = getAC(), t = ac.currentTime;
+      var freqs = [1200, 900, 600, 400];
+      for (var i = 0; i < freqs.length; i++) {
+        var o = ac.createOscillator(), g = ac.createGain();
+        o.type = 'square';
+        var st = t + i * 0.05;
+        o.frequency.setValueAtTime(freqs[i], st);
+        o.frequency.linearRampToValueAtTime(freqs[i] * 0.6, st + 0.05);
+        g.gain.setValueAtTime(0.07, st);
+        g.gain.exponentialRampToValueAtTime(0.0001, st + 0.07);
+        o.connect(g); g.connect(ac.destination);
+        o.start(st); o.stop(st + 0.07);
+      }
+    }
+
+    function spawnZombie(wx, wy) {
+      if (zombies.length >= MAX_ZOMBIES) return;
+      var zt = ZOMBIE_TYPES[Math.floor(Math.random() * ZOMBIE_TYPES.length)];
+      var depth = Math.floor(wy / TILE);
+      var hp = 2;
+      var spd = 0.4 + Math.random() * 0.4 + Math.min(depth / 100, 0.6);
+      // Find safe Y: move up until not inside a solid block
+      var safeY = wy - ZOMBIE_SIZE * 0.5;
+      for (var sy = 0; sy < 5; sy++) {
+        var checkRow = Math.floor((safeY + ZOMBIE_SIZE * 0.5) / TILE);
+        var checkCol = Math.floor(wx / TILE);
+        var cc = getCell(checkRow, checkCol);
+        if (!cc || cc.t === E) break;
+        safeY -= TILE;
+      }
+      zombies.push({
+        x: wx, y: safeY,
+        vx: 0, vy: 0,
+        type: zt,
+        hp: hp, maxHp: hp,
+        speed: spd,
+        dir: Math.random() < 0.5 ? -1 : 1,
+        state: 'idle',
+        anim: 0,
+        animTimer: 0,
+        hurtTimer: 0,
+        attackTimer: 0,
+        deadTimer: 0,
+        grounded: false,
+        fallFrames: 0,
+        idleTimer: 0,
+        sleepTimer: 0,
+        sleepZzz: 0,
+        returnToSleep: false,
+        pts: 50 + depth * 3
+      });
+    }
+
+    function checkPickZombieCollisions() {
+      var PICK_R = 28; // pick collision radius
+      var ZR = ZOMBIE_SIZE * 0.45; // zombie collision half-size
+      var allPicks = [pick].concat(userPicks, extraPicks);
+      for (var pi = 0; pi < allPicks.length; pi++) {
+        var p = allPicks[pi];
+        if (!p || p.stuck) continue;
+        var pSpeed = Math.sqrt(p.vx * p.vx + p.vy * p.vy);
+        if (pSpeed < 1.5) continue; // too slow to deal damage
+        for (var zi = zombies.length - 1; zi >= 0; zi--) {
+          var z = zombies[zi];
+          if (z.state === 'dead') continue;
+          var dx = p.x - z.x, dy = p.y - z.y;
+          var dist = Math.sqrt(dx * dx + dy * dy);
+          if (dist < PICK_R + ZR) {
+            // Bounce the pickaxe off the zombie
+            var nx = dist > 0 ? dx / dist : 0;
+            var ny = dist > 0 ? dy / dist : -1;
+            var bounceForce = Math.max(3, pSpeed * 0.6);
+            p.vx = nx * bounceForce;
+            p.vy = ny * bounceForce - 2; // kick upward
+            p.spin += (Math.random() - 0.5) * 0.3;
+            // Push pick out of zombie
+            p.x = z.x + nx * (PICK_R + ZR + 1);
+            p.y = z.y + ny * (PICK_R + ZR + 1);
+            // Damage zombie (1 hp)
+            z.hp -= 1;
+            z.state = 'hurt'; z.hurtTimer = 12; z.animTimer = 0;
+            // Knockback zombie slightly
+            z.vx += nx * -2;
+            z.vy -= 1;
+            sfxZombieHurt();
+            spawnText(z.x, z.y - ZOMBIE_SIZE * 0.5, '-1', '#ff8844');
+            if (z.hp <= 0) {
+              z.state = 'dead'; z.animTimer = 0; z.deadTimer = 0;
+              score += z.pts;
+              if (p.userName) {
+                if (!persistentScores[p.userName]) persistentScores[p.userName] = { score: 0, avatar: p.userAvatarUrl || '' };
+                persistentScores[p.userName].score += z.pts;
+              }
+              spawnText(z.x, z.y - ZOMBIE_SIZE * 0.6, '+' + z.pts, '#ffdd44');
+              sfxZombieDeath();
+            }
+            break; // one zombie per pick per frame
+          }
+        }
+      }
+    }
+
+    function updateZombies() {
+      var ZG = 0.35;
+      for (var i = zombies.length - 1; i >= 0; i--) {
+        var z = zombies[i];
+
+        // Remove if too far above camera
+        if (z.y < camY - 400) { zombies.splice(i, 1); continue; }
+
+        // ── DEAD: play full animation then remove ──
+        if (z.state === 'dead') {
+          z.deadTimer++;
+          z.animTimer += ZOMBIE_ANIMS.dead.speed;
+          if (z.animTimer >= ZOMBIE_ANIMS.dead.count) z.animTimer = ZOMBIE_ANIMS.dead.count - 0.01;
+          // still apply gravity so corpse falls
+          z.vy += ZG; z.y += z.vy;
+          var dFootRow = Math.floor((z.y + ZOMBIE_SIZE * 0.5) / TILE);
+          var dGround = getCell(dFootRow, Math.floor(z.x / TILE));
+          if (dGround && dGround.t !== E) { z.y = dFootRow * TILE - ZOMBIE_SIZE * 0.5; z.vy = 0; }
+          if (z.deadTimer > 120) { zombies.splice(i, 1); }
+          continue;
+        }
+
+        // ── HURT: play full hurt anim, then transition ──
+        if (z.state === 'hurt') {
+          z.hurtTimer--;
+          z.animTimer += ZOMBIE_ANIMS.hurt.speed;
+          // apply gravity during hurt
+          z.vy += ZG; z.y += z.vy;
+          var hFootRow = Math.floor((z.y + ZOMBIE_SIZE * 0.5) / TILE);
+          var hGround = getCell(hFootRow, Math.floor(z.x / TILE));
+          if (hGround && hGround.t !== E) { z.y = hFootRow * TILE - ZOMBIE_SIZE * 0.5; z.vy = 0; }
+          if (z.hurtTimer <= 0) {
+            // transition to idle after hurt
+            z.state = 'idle'; z.animTimer = 0;
+          } else if (z.animTimer >= ZOMBIE_ANIMS.hurt.count) {
+            z.animTimer = 0; // loop hurt if timer not done
+          }
+          continue;
+        }
+
+        // ── Physics ──
+        var wasGrounded = z.grounded;
+        z.vy += ZG;
+        z.x += z.vx;
+        z.y += z.vy;
+
+        // NaN/Infinity safety
+        if (!isFinite(z.x) || !isFinite(z.y)) { zombies.splice(i, 1); continue; }
+        if (!isFinite(z.vx)) z.vx = 0;
+        if (!isFinite(z.vy)) z.vy = 0;
+
+        // Ground check
+        var footRow = Math.floor((z.y + ZOMBIE_SIZE * 0.5) / TILE);
+        var footCol = Math.floor(z.x / TILE);
+        var groundCell = getCell(footRow, footCol);
+        z.grounded = false;
+        if (groundCell && groundCell.t !== E && z.vy >= 0) {
+          z.y = footRow * TILE - ZOMBIE_SIZE * 0.5;
+          z.vy = 0;
+          z.grounded = true;
+        }
+
+        // Landing transition: was airborne, now grounded
+        if (!wasGrounded && z.grounded && z.state === 'jump') {
+          z.state = 'idle'; z.animTimer = 0;
+          z.fallFrames = 0;
+        }
+
+        // Track fall duration
+        if (!z.grounded && z.vy > 0) {
+          z.fallFrames++;
+        }
+
+        // Floor disappeared under zombie (block broken)
+        if (wasGrounded && !z.grounded && z.state !== 'jump') {
+          z.state = 'jump'; z.animTimer = 0; z.fallFrames = 0;
+        }
+
+        // Wall clamp
+        var wallLeft = TILE + 1;
+        var wallRight = (COLS - 1) * TILE - 1;
+        if (z.x < wallLeft + ZOMBIE_SIZE * 0.4) { z.x = wallLeft + ZOMBIE_SIZE * 0.4; z.dir = 1; }
+        if (z.x > wallRight - ZOMBIE_SIZE * 0.4) { z.x = wallRight - ZOMBIE_SIZE * 0.4; z.dir = -1; }
+
+        // ── JUMP state: animate and wait for landing ──
+        if (z.state === 'jump') {
+          z.animTimer += ZOMBIE_ANIMS.jump.speed;
+          if (z.animTimer >= ZOMBIE_ANIMS.jump.count) z.animTimer = ZOMBIE_ANIMS.jump.count - 0.01;
+          // air friction
+          z.vx *= 0.98;
+          continue;
+        }
+
+        // ── GROUNDED STATES: idle, walk, run ──
+        if (!z.grounded) {
+          // fell off edge unexpectedly
+          z.state = 'jump'; z.animTimer = 0; z.fallFrames = 0;
+          continue;
+        }
+
+        // ── Spatial awareness ──
+        var myRow = Math.floor(z.y / TILE);
+        var myCol = footCol;
+
+        // Check wall/block in direction
+        var _scL = Math.floor((z.x - ZOMBIE_SIZE * 0.5) / TILE);
+        var _cL = getCell(myRow, _scL);
+        var blockedLeft = _cL && _cL.t !== E;
+        var _scR = Math.floor((z.x + ZOMBIE_SIZE * 0.5) / TILE);
+        var _cR = getCell(myRow, _scR);
+        var blockedRight = _cR && _cR.t !== E;
+
+        // Check gap in direction
+        var _gapColL = Math.floor((z.x - TILE * 0.6) / TILE);
+        var _gapColR = Math.floor((z.x + TILE * 0.6) / TILE);
+        var _floorL = getCell(footRow, _gapColL);
+        var _floorR = getCell(footRow, _gapColR);
+        var gapLeft = !_floorL || _floorL.t === E;
+        var gapRight = !_floorR || _floorR.t === E;
+
+        // Isolated = solid walls on both sides
+        var isolated = blockedLeft && blockedRight;
+        // Can't move in either direction
+        var trapped = (blockedLeft || gapLeft) && (blockedRight || gapRight);
+
+        // Jump check helper — also checks headroom above zombie and landing space
+        var _canJump = function(dir) {
+          var sc = Math.floor((z.x + dir * ZOMBIE_SIZE * 0.5) / TILE);
+          var myCol2 = Math.floor(z.x / TILE);
+          var a1 = getCell(myRow - 1, sc);
+          if (!a1 || a1.t === E) {
+            // 1-block wall: check headroom above zombie and space for body at landing
+            var headroom = getCell(myRow - 1, myCol2);
+            var landBody = getCell(myRow - 2, sc);
+            if (headroom && headroom.t !== E) return 0; // ceiling blocks jump
+            if (landBody && landBody.t !== E) return 0; // no space for body at top
+            return 1;
+          }
+          var a2 = getCell(myRow - 2, sc);
+          if (!a2 || a2.t === E) {
+            // 2-block wall: check headroom above zombie and space for body at landing
+            var head1 = getCell(myRow - 1, myCol2);
+            var head2 = getCell(myRow - 2, myCol2);
+            var landBody2 = getCell(myRow - 3, sc);
+            if ((head1 && head1.t !== E) || (head2 && head2.t !== E)) return 0;
+            if (landBody2 && landBody2.t !== E) return 0;
+            return 2;
+          }
+          return 0;
+        };
+        // Gap landing helper
+        var _gapLanding = function(dir) {
+          var ac = Math.floor((z.x + dir * TILE * 0.6) / TILE);
+          var l1 = getCell(footRow, ac + dir);
+          var l2 = getCell(footRow, ac + dir * 2);
+          return (l1 && l1.t !== E) || (l2 && l2.t !== E);
+        };
+        // Gap drop helper
+        var _gapDrop = function(dir) {
+          var ac = Math.floor((z.x + dir * TILE * 0.6) / TILE);
+          var d1 = getCell(footRow + 1, ac);
+          var d2 = getCell(footRow + 2, ac);
+          return (d1 && d1.t !== E) || (d2 && d2.t !== E);
+        };
+
+        // ── Check proximity to any pickaxe for attack ──
+        var nearPick = null;
+        var nearPickDist = 999;
+        for (var pk = 0; pk < userPicks.length; pk++) {
+          var p = userPicks[pk];
+          var dx = p.x - z.x, dy = p.y - z.y;
+          var dist = Math.sqrt(dx * dx + dy * dy);
+          if (dist < nearPickDist) { nearPickDist = dist; nearPick = p; }
+        }
+        var pickClose = nearPickDist < ZOMBIE_SIZE * 1.2;
+
+        // ── SLEEP state: zombie rests when isolated between walls ──
+        if (z.state === 'sleep') {
+          z.vx = 0;
+          z.animTimer += ZOMBIE_ANIMS.idle.speed * 0.4;
+          if (z.animTimer >= ZOMBIE_ANIMS.idle.count) z.animTimer = 0;
+          z.sleepTimer = (z.sleepTimer || 0) + 1;
+          z.sleepZzz = (z.sleepZzz || 0) + 1;
+          // Only wake up if no longer isolated (wall was destroyed, path opened)
+          // AND there's actually somewhere to go
+          if (!isolated && (!blockedLeft || !blockedRight)) {
+            var canGoLeft = !blockedLeft && !gapLeft;
+            var canGoRight = !blockedRight && !gapRight;
+            var canJumpL = _canJump(-1) > 0;
+            var canJumpR = _canJump(1) > 0;
+            var canDropL = gapLeft && _gapDrop(-1);
+            var canDropR = gapRight && _gapDrop(1);
+            if (canGoLeft || canGoRight || canJumpL || canJumpR || canDropL || canDropR) {
+              z.state = 'idle'; z.animTimer = 0; z.idleTimer = 0; z.sleepTimer = 0;
+            }
+          }
+          // Attack if pickaxe comes close
+          if (pickClose) {
+            z.dir = nearPick.x > z.x ? 1 : -1;
+            z.state = 'attack'; z.animTimer = 0; z.returnToSleep = isolated;
+          }
+          if (Math.random() < 0.002) sfxZombieGroan();
+          if (z.grounded) z.vx *= 0.85;
+          continue;
+        }
+
+        // ── ATTACK: only triggered by pickaxe proximity ──
+        if (z.state === 'attack') {
+          z.animTimer += ZOMBIE_ANIMS.attack.speed;
+          if (z.animTimer >= ZOMBIE_ANIMS.attack.count) {
+            if (z.returnToSleep && isolated) {
+              z.state = 'sleep'; z.animTimer = 0; z.sleepTimer = 0;
+            } else {
+              z.state = 'idle'; z.animTimer = 0;
+            }
+            z.returnToSleep = false;
+          }
+          if (z.grounded) z.vx *= 0.85;
+          continue;
+        }
+
+        // ── Obstacle handling (only when walking) ──
+        if (z.state === 'walk') {
+          var dirBlocked = z.dir > 0 ? blockedRight : blockedLeft;
+          var dirGap = z.dir > 0 ? gapRight : gapLeft;
+
+          if (dirBlocked) {
+            var jh = _canJump(z.dir);
+            if (jh > 0) {
+              z.vy = jh === 1 ? -7 : -9.5; z.vx = z.dir * z.speed * 2;
+              z.grounded = false; z.state = 'jump'; z.animTimer = 0; z.fallFrames = 0;
+              continue;
+            }
+            // Can't jump over — check other direction
+            var otherBlocked = z.dir > 0 ? blockedLeft : blockedRight;
+            var otherGap = z.dir > 0 ? gapLeft : gapRight;
+            if (!otherBlocked && !otherGap) {
+              z.dir *= -1; z.state = 'idle'; z.animTimer = 0; z.idleTimer = 0;
+              continue;
+            }
+            // Isolated between walls — sleep
+            if (isolated) {
+              z.state = 'sleep'; z.animTimer = 0; z.sleepTimer = 0; z.vx = 0;
+              continue;
+            }
+            // Trapped but not isolated (gaps) — stop and idle
+            if (trapped) {
+              z.state = 'idle'; z.animTimer = 0; z.idleTimer = 0; z.vx = 0;
+              continue;
+            }
+          }
+
+          if (dirGap) {
+            if (_gapLanding(z.dir)) {
+              z.vy = -6; z.vx = z.dir * z.speed * 3;
+              z.grounded = false; z.state = 'jump'; z.animTimer = 0; z.fallFrames = 0;
+              continue;
+            } else if (_gapDrop(z.dir)) {
+              z.vx = z.dir * z.speed * 1.5;
+            } else {
+              var otherBlocked2 = z.dir > 0 ? blockedLeft : blockedRight;
+              var otherGap2 = z.dir > 0 ? gapLeft : gapRight;
+              if (!otherBlocked2 && !otherGap2) {
+                z.dir *= -1; z.state = 'idle'; z.animTimer = 0; z.idleTimer = 0;
+                continue;
+              }
+              // Dead end — idle (not sleep, since it's a gap not a wall)
+              z.state = 'idle'; z.animTimer = 0; z.idleTimer = 0; z.vx = 0;
+              continue;
+            }
+          }
+        }
+
+        // ── State machine: idle ↔ walk with random hurt as ambient ──
+        if (z.state === 'idle') {
+          z.vx = 0;
+          z.animTimer += ZOMBIE_ANIMS.idle.speed;
+          if (z.animTimer >= ZOMBIE_ANIMS.idle.count) z.animTimer = 0;
+          z.idleTimer++;
+          // Isolated between walls — go to sleep
+          if (isolated && z.idleTimer > 40) {
+            z.state = 'sleep'; z.animTimer = 0; z.sleepTimer = 0;
+            continue;
+          }
+          // Attack if pickaxe is close
+          if (pickClose) {
+            z.dir = nearPick.x > z.x ? 1 : -1;
+            z.state = 'attack'; z.animTimer = 0;
+            continue;
+          }
+          // After idling, start walking
+          if (z.idleTimer > 60 + Math.random() * 90) {
+            z.state = 'walk'; z.animTimer = 0; z.idleTimer = 0;
+            if (!blockedRight && !gapRight) z.dir = 1;
+            else if (!blockedLeft && !gapLeft) z.dir = -1;
+            else if (Math.random() < 0.3) z.dir *= -1;
+          }
+        } else if (z.state === 'walk') {
+          z.vx = z.dir * z.speed;
+          z.animTimer += ZOMBIE_ANIMS.walk.speed;
+          if (z.animTimer >= ZOMBIE_ANIMS.walk.count) z.animTimer = 0;
+          z.idleTimer++;
+          // Attack if pickaxe is close
+          if (pickClose) {
+            z.dir = nearPick.x > z.x ? 1 : -1;
+            z.state = 'attack'; z.animTimer = 0; z.vx = 0;
+            continue;
+          }
+          // Random stop to idle
+          if (z.idleTimer > 120 + Math.random() * 180) {
+            z.state = 'idle'; z.animTimer = 0; z.idleTimer = 0;
+          }
+          // Random groan
+          if (Math.random() < 0.003) sfxZombieGroan();
+          // Random jump to explore
+          if (Math.random() < 0.008) {
+            z.vy = -7 - Math.random() * 2;
+            z.vx = z.dir * z.speed * 2.5;
+            z.grounded = false; z.state = 'jump'; z.animTimer = 0; z.fallFrames = 0;
+          }
+        }
+
+        // Ground friction
+        if (z.grounded) z.vx *= 0.85;
+      }
+    }
+
+    function drawZombies() {
+      for (var i = 0; i < zombies.length; i++) {
+        var z = zombies[i];
+        var animKey = z.state;
+        if (animKey === 'sleep') animKey = 'idle'; // sleep uses idle sprites
+        var animDef = ZOMBIE_ANIMS[animKey];
+        if (!animDef) { animKey = 'idle'; animDef = ZOMBIE_ANIMS.idle; }
+        var sprites = zombieSprites[z.type][animKey];
+        if (!sprites || sprites.length === 0) continue;
+        var frame = Math.min(Math.floor(z.animTimer), sprites.length - 1);
+        if (frame < 0) frame = 0;
+        var img = sprites[frame];
+        if (!img || !img.complete || !img.naturalWidth) continue;
+
+        ctx.save();
+        ctx.translate(z.x, z.y);
+        if (z.dir < 0) ctx.scale(-1, 1);
+
+        // Sleep uses idle sprites at full opacity
+        // Hurt flash
+        if (z.state === 'hurt' && z.hurtTimer % 4 < 2) ctx.globalAlpha = 0.5;
+        // Dead fade
+        if (z.state === 'dead') ctx.globalAlpha = Math.max(0, 1 - z.deadTimer / 120);
+
+        var w = ZOMBIE_SIZE, h = ZOMBIE_SIZE;
+        ctx.drawImage(img, -w / 2, -h / 2, w, h);
+
+        // Zzz floating text for sleeping zombies
+        if (z.state === 'sleep') {
+          ctx.globalAlpha = 0.5 + 0.3 * Math.sin((z.sleepZzz || 0) * 0.04);
+          ctx.font = '14px monospace';
+          ctx.fillStyle = '#aaddff';
+          var zzOff = Math.sin((z.sleepZzz || 0) * 0.03) * 6;
+          // Reset scale for text (dir flip)
+          if (z.dir < 0) ctx.scale(-1, 1);
+          ctx.fillText('Z', 8, -h / 2 - 6 + zzOff);
+          ctx.font = '11px monospace';
+          ctx.fillText('z', 18, -h / 2 - 14 + zzOff * 0.7);
+          ctx.font = '9px monospace';
+          ctx.fillText('z', 26, -h / 2 - 20 + zzOff * 0.5);
+          if (z.dir < 0) ctx.scale(-1, 1);
+        }
+
+        // HP bar
+        if (z.state !== 'dead' && z.hp < z.maxHp) {
+          ctx.globalAlpha = 0.8;
+          var barW = 40, barH = 5;
+          var barX = -barW / 2, barY = -h / 2 - 10;
+          ctx.fillStyle = '#333'; ctx.fillRect(barX, barY, barW, barH);
+          ctx.fillStyle = '#44ff44'; ctx.fillRect(barX, barY, barW * (z.hp / z.maxHp), barH);
+        }
+
+        ctx.globalAlpha = 1;
+        ctx.restore();
+      }
+    }
+
+    // ── BOSS: Aranha Gigante ─────────────────────────────────────────────────────
+    var boss = null;
+    var bossIntr = null;
+
+    function spawnBoss() {
+      if (boss) return;
+      var spawnX = TILE + Math.random() * (canvas.width - TILE * 2);
+      var spawnY = camY - 120;
+      boss = {
+        x: spawnX, y: spawnY,
+        vx: (Math.random() > 0.5 ? 1 : -1) * 2.2, vy: 0,
+        hp: 60, maxHp: 60, size: 90, legPhase: 0,
+        state: 'intro', stateTimer: 0, hurtTimer: 0,
+        webCooldown: 0, diveCooldown: 200,
+        webs: [], dead: false, deathTimer: 0
+      };
+      bossIntr = { timer: 0, duration: 150 };
+      shakeAmt = 18;
+      startBossMusic();
+    }
+
+    function updateBoss() {
+      if (!boss) return;
+      if (bossIntr) {
+        bossIntr.timer++;
+        boss.legPhase += 0.07;
+        var introTargetY = pick.y - boss.size * 2.5;
+        boss.y += (introTargetY - boss.y) * 0.04;
+        boss.x += (pick.x - boss.x) * 0.02;
+        boss.x = Math.max(TILE + boss.size, Math.min(canvas.width - TILE - boss.size, boss.x));
+        if (bossIntr.timer >= bossIntr.duration) {
+          bossIntr = null;
+          boss.state = 'chase'; boss.stateTimer = 0;
+        }
+        return;
+      }
+      if (boss.dead) {
+        boss.deathTimer--;
+        if (boss.deathTimer <= 0) { stopBossMusic(); boss = null; }
+        return;
+      }
+      boss.legPhase += 0.18;
+      boss.stateTimer++;
+      if (boss.hurtTimer > 0) boss.hurtTimer--;
+      if (boss.webCooldown > 0) boss.webCooldown--;
+      if (boss.diveCooldown > 0) boss.diveCooldown--;
+      var dx = pick.x - boss.x, dy = pick.y - boss.y;
+      var dist = Math.sqrt(dx * dx + dy * dy) || 1;
+      var wallL = TILE + boss.size, wallR = canvas.width - TILE - boss.size;
+      if (boss.state === 'chase') {
+        var chaseTargetX = pick.x + (Math.random() - 0.5) * TILE * 2;
+        var chaseTargetY = pick.y - boss.size * 1.8 - TILE;
+        boss.vx += (chaseTargetX - boss.x) * 0.025 + boss.vx * 0.3;
+        boss.vy += (chaseTargetY - boss.y) * 0.03;
+        boss.vx += (chaseTargetX - boss.x) * 0.002;
+        boss.vx *= 0.92;
+        boss.x = Math.max(wallL, Math.min(wallR, boss.x));
+        if (boss.webCooldown <= 0) {
+          var baseAngle = Math.atan2(dy, dx);
+          for (var wi = -1; wi <= 1; wi++) {
+            var angle = baseAngle + wi * 0.32;
+            boss.webs.push({ x: boss.x, y: boss.y + boss.size * 0.3, vx: Math.cos(angle) * 5.5, vy: Math.sin(angle) * 5.5, life: 160 });
+          }
+          boss.webCooldown = 65;
+        }
+        if (boss.diveCooldown <= 0 && boss.stateTimer > 80) {
+          boss.state = 'dive'; boss.stateTimer = 0;
+          boss.diveTargetY = pick.y - boss.size * 0.5;
+          boss.diveCooldown = 280 + Math.floor(Math.random() * 160);
+        }
+      } else if (boss.state === 'dive') {
+        boss.y += (boss.diveTargetY - boss.y) * 0.07;
+        boss.x += (pick.x - boss.x) * 0.04;
+        boss.x = Math.max(wallL, Math.min(wallR, boss.x));
+        boss.diveTargetY = pick.y - boss.size * 0.5;
+        if (boss.webCooldown <= 0) {
+          for (var wi = -2; wi <= 2; wi++) {
+            var angle = Math.atan2(dy, dx) + wi * 0.25;
+            boss.webs.push({ x: boss.x, y: boss.y + boss.size * 0.3, vx: Math.cos(angle) * 7, vy: Math.sin(angle) * 7, life: 160 });
+          }
+          boss.webCooldown = 38;
+        }
+        if (boss.stateTimer > 150) { boss.state = 'retreat'; boss.stateTimer = 0; }
+      } else if (boss.state === 'retreat') {
+        var retreatY = pick.y - boss.size * 3;
+        boss.vy += (retreatY - boss.y) * 0.04;
+        boss.vy *= 0.9;
+        boss.y += boss.vy;
+        if (boss.stateTimer > 80) { boss.state = 'chase'; boss.stateTimer = 0; }
+      }
+      boss.x += boss.vx; boss.y += boss.vy;
+      // teias
+      for (var wi = boss.webs.length - 1; wi >= 0; wi--) {
+        var w = boss.webs[wi];
+        w.x += w.vx; w.y += w.vy; w.life--;
+        if (w.life <= 0) { boss.webs.splice(wi, 1); continue; }
+        var wdx = pick.x - w.x, wdy = pick.y - w.y;
+        if (Math.sqrt(wdx * wdx + wdy * wdy) < PICK_HALF + 10) {
+          boss.webs.splice(wi, 1);
+        }
+      }
+      // colisão com picareta
+      var cdx = pick.x - boss.x, cdy = pick.y - boss.y;
+      var cdist = Math.sqrt(cdx * cdx + cdy * cdy) || 1;
+      if (cdist < boss.size * 0.9 + PICK_HALF) {
+        if (boss.hurtTimer <= 0) {
+          var dmg = Math.ceil(5 + Math.random() * 5);
+          boss.hp -= dmg;
+          boss.hurtTimer = 30;
+          boss.vx = -(cdx / cdist) * 4; boss.vy = -(cdy / cdist) * 4;
+          shakeAmt = Math.max(shakeAmt, 12);
+          spawnParts(boss.x, boss.y, '#ff4444', 18);
+          spawnText(boss.x, boss.y - boss.size - 10, '-' + dmg + ' HP', '#ff4444');
+          sfxBreak(2);
+        }
+        var overlap = (boss.size + PICK_HALF) - cdist;
+        if (cdist > 0) { pick.x -= (cdx / cdist) * overlap * 0.5; pick.y -= (cdy / cdist) * overlap * 0.5; }
+        pick.vx = -pick.vx * BOUNCE * 0.6;
+        pick.vy = -pick.vy * BOUNCE * 0.6;
+      }
+      if (boss.hp <= 0 && !boss.dead) {
+        boss.dead = true; boss.deathTimer = 150; shakeAmt = 28;
+        for (var ei = 0; ei < 5; ei++) {
+          explosions.push({ x: boss.x + (Math.random() - 0.5) * 120, y: boss.y + (Math.random() - 0.5) * 120, frame: 0, timer: ei * 10, mega: ei % 2 === 0 });
+        }
+        sfxMegaTNT();
+        spawnText(boss.x, boss.y - 10, 'BOSS DEFEATED!', '#ffdd00');
+      }
+    }
+
+    function drawBoss() {
+      if (!boss) return;
+      var x = boss.x, y = boss.y - camY;
+      var t = boss.legPhase;
+      var hurt = boss.hurtTimer > 0, dead = boss.dead;
+      var alpha = dead ? Math.max(0, boss.deathTimer / 120) : 1;
+      var sz = boss.size;
+      ctx.save();
+      ctx.globalAlpha = alpha;
+      // fio de teia do teto
+      ctx.strokeStyle = 'rgba(180,180,220,0.35)';
+      ctx.lineWidth = 2; ctx.setLineDash([6, 4]);
+      ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, y - sz * 0.9); ctx.stroke();
+      ctx.setLineDash([]);
+      // pernas
+      var legBaseColor = hurt ? '#cc4444' : '#2a0a3a';
+      var legHighlight = hurt ? '#ff8888' : '#6622aa';
+      var legDefs = [[-2.5,50,55,40],[-2.1,55,60,42],[-1.7,58,62,44],[-1.3,52,56,38],[2.5,50,55,40],[2.1,55,60,42],[1.7,58,62,44],[1.3,52,56,38]];
+      for (var li = 0; li < 8; li++) {
+        var ld = legDefs[li], side = li < 4 ? -1 : 1;
+        var wave = Math.sin(t + li * 0.75) * 0.28;
+        var ang1 = ld[0] + wave;
+        var k1x = x + Math.cos(ang1) * ld[1], k1y = y + Math.sin(ang1) * ld[1];
+        var ang2 = ang1 + side * 0.85 + wave * 0.4;
+        var k2x = k1x + Math.cos(ang2) * ld[2], k2y = k1y + Math.sin(ang2) * ld[2];
+        var ang3 = ang2 + side * 0.6 + Math.sin(t * 0.5 + li) * 0.15;
+        var fx = k2x + Math.cos(ang3) * ld[3], fy = k2y + Math.sin(ang3) * ld[3];
+        ctx.strokeStyle = 'rgba(0,0,0,0.5)'; ctx.lineWidth = 9; ctx.lineCap = 'round'; ctx.shadowBlur = 0;
+        ctx.beginPath(); ctx.moveTo(x+2,y+2); ctx.lineTo(k1x+2,k1y+2); ctx.lineTo(k2x+2,k2y+2); ctx.lineTo(fx+2,fy+2); ctx.stroke();
+        ctx.strokeStyle = legBaseColor; ctx.lineWidth = 7;
+        ctx.shadowBlur = 10; ctx.shadowColor = legHighlight;
+        ctx.beginPath(); ctx.moveTo(x,y); ctx.lineTo(k1x,k1y); ctx.lineTo(k2x,k2y); ctx.lineTo(fx,fy); ctx.stroke();
+        ctx.strokeStyle = legHighlight; ctx.lineWidth = 2.5; ctx.shadowBlur = 0;
+        ctx.beginPath(); ctx.moveTo(x,y); ctx.lineTo(k1x,k1y); ctx.stroke();
+        ctx.fillStyle = hurt ? '#ff6666' : '#cc88ff';
+        ctx.shadowBlur = 5; ctx.shadowColor = hurt ? '#ff0000' : '#aa44ff';
+        ctx.beginPath(); ctx.arc(fx,fy,5,0,Math.PI*2); ctx.fill();
+        var clawAng = ang3 + side * 0.4;
+        ctx.beginPath(); ctx.arc(fx+Math.cos(clawAng)*8,fy+Math.sin(clawAng)*8,3.5,0,Math.PI*2); ctx.fill();
+      }
+      // abdômen
+      var abdY = y + sz * 0.25, abdRx = sz * 0.88, abdRy = sz * 0.95;
+      var abdGrad = ctx.createRadialGradient(x - sz * 0.15, abdY - sz * 0.2, sz * 0.05, x, abdY, abdRx);
+      if (hurt) { abdGrad.addColorStop(0,'#ffffff'); abdGrad.addColorStop(0.25,'#ff8888'); abdGrad.addColorStop(0.6,'#cc0000'); abdGrad.addColorStop(1,'#330000'); }
+      else { abdGrad.addColorStop(0,'#ffee44'); abdGrad.addColorStop(0.2,'#ff8800'); abdGrad.addColorStop(0.5,'#cc2200'); abdGrad.addColorStop(0.75,'#6a0a5a'); abdGrad.addColorStop(1,'#1a0020'); }
+      ctx.fillStyle = abdGrad; ctx.shadowBlur = hurt ? 35 : 28; ctx.shadowColor = hurt ? '#ff4444' : '#ff6600';
+      ctx.beginPath(); ctx.ellipse(x, abdY, abdRx, abdRy, 0, 0, Math.PI * 2); ctx.fill();
+      // teias
+      ctx.shadowBlur = 0;
+      for (var wi = 0; wi < boss.webs.length; wi++) {
+        var w = boss.webs[wi], wy = w.y - camY;
+        ctx.globalAlpha = alpha * (w.life / 160);
+        ctx.strokeStyle = '#88ff44'; ctx.lineWidth = 2;
+        ctx.shadowBlur = 5; ctx.shadowColor = '#44ff00';
+        ctx.beginPath(); ctx.moveTo(w.x - w.vx * 3, wy - w.vy * 3); ctx.lineTo(w.x, wy); ctx.stroke();
+        ctx.fillStyle = '#aaffaa';
+        ctx.beginPath(); ctx.arc(w.x, wy, 8, 0, Math.PI * 2); ctx.fill();
+      }
+      // barra de HP
+      ctx.globalAlpha = alpha; ctx.shadowBlur = 0;
+      var barW = 160, barH = 12, barX = x - barW / 2, barY = y - sz - 40;
+      ctx.fillStyle = '#220000'; ctx.fillRect(barX - 1, barY - 1, barW + 2, barH + 2);
+      ctx.fillStyle = '#330000'; ctx.fillRect(barX, barY, barW, barH);
+      var hpRatio = Math.max(0, boss.hp / boss.maxHp);
+      var hpColor = hpRatio > 0.5 ? '#44ff44' : hpRatio > 0.25 ? '#ffaa00' : '#ff2200';
+      ctx.fillStyle = hpColor; ctx.shadowBlur = 6; ctx.shadowColor = hpColor;
+      ctx.fillRect(barX, barY, barW * hpRatio, barH);
+      ctx.shadowBlur = 0; ctx.strokeStyle = '#aa44ff'; ctx.lineWidth = 2; ctx.strokeRect(barX, barY, barW, barH);
+      ctx.fillStyle = '#ffffff'; ctx.font = 'bold 11px Arial'; ctx.textAlign = 'center';
+      ctx.fillText('⚠ SPIDER BOSS ⚠', x, barY - 5);
+      ctx.globalAlpha = 1; ctx.restore();
+    }
+
+    // ── Áudio ─────────────────────────────────────────────────────────────────
+    var AC = null;
+    function getAC() {
+      if (!AC) AC = new (window.AudioContext || window.webkitAudioContext)();
+      if (AC.state === 'suspended') AC.resume();
+      return AC;
+    }
+
+    var _reverbNode = null;
+    function getReverbNode() {
+      var ac = getAC();
+      if (_reverbNode && _reverbNode.context === ac) return _reverbNode;
+      var len = ac.sampleRate * 2.2;
+      var buf = ac.createBuffer(2, len, ac.sampleRate);
+      for (var ch = 0; ch < 2; ch++) {
+        var d = buf.getChannelData(ch);
+        for (var i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, 2.5);
+      }
+      var conv = ac.createConvolver(); conv.buffer = buf;
+      var wetG = ac.createGain(); wetG.gain.value = 0.38;
+      conv.connect(wetG); wetG.connect(ac.destination);
+      _reverbNode = conv; return conv;
+    }
+
+    function playNote(freq, type, vol, attack, decay, when) {
+      var ac = getAC();
+      var osc = ac.createOscillator();
+      var gain = ac.createGain();
+      var rev = getReverbNode();
+      osc.connect(gain); gain.connect(ac.destination); gain.connect(rev);
+      osc.type = type || 'sine';
+      osc.frequency.setValueAtTime(freq, when);
+      gain.gain.setValueAtTime(0.0001, when);
+      gain.gain.linearRampToValueAtTime(vol, when + attack);
+      gain.gain.exponentialRampToValueAtTime(0.0001, when + attack + decay);
+      osc.start(when); osc.stop(when + attack + decay + 0.1);
+    }
+
+    function sfxHit(blockType) {
+      var ac = getAC(), t = ac.currentTime;
+      var len = Math.ceil(ac.sampleRate * 0.045);
+      var buf = ac.createBuffer(1, len, ac.sampleRate);
+      var d = buf.getChannelData(0);
+      for (var i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, 3.5);
+      var src = ac.createBufferSource(); src.buffer = buf;
+      var filt = ac.createBiquadFilter();
+      filt.type = 'lowpass'; filt.frequency.value = 400 + blockType * 60;
+      var g = ac.createGain(); g.gain.setValueAtTime(0.09, t);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + 0.045);
+      src.connect(filt); filt.connect(g); g.connect(ac.destination);
+      src.start(t);
+    }
+
+    function sfxBreak(blockType) {
+      var ac = getAC(), t = ac.currentTime;
+      var osc = ac.createOscillator(), og = ac.createGain();
+      var baseFreq = [55, 60, 58, 52, 48, 50, 44, 42, 40][Math.min(blockType, 8)];
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(baseFreq * 1.8, t);
+      osc.frequency.exponentialRampToValueAtTime(baseFreq, t + 0.18);
+      og.gain.setValueAtTime(0.45, t); og.gain.exponentialRampToValueAtTime(0.0001, t + 0.32);
+      osc.connect(og); og.connect(ac.destination); osc.start(t); osc.stop(t + 0.35);
+      var len = Math.ceil(ac.sampleRate * 0.22);
+      var buf = ac.createBuffer(1, len, ac.sampleRate);
+      var d = buf.getChannelData(0);
+      for (var i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, 2.2);
+      var src = ac.createBufferSource(); src.buffer = buf;
+      var filt = ac.createBiquadFilter();
+      filt.type = 'lowpass'; filt.frequency.value = 300 + blockType * 40;
+      var g = ac.createGain(); g.gain.setValueAtTime(0.35, t);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + 0.22);
+      src.connect(filt); filt.connect(g); g.connect(ac.destination); src.start(t);
+    }
+
+    function sfxFuse(duration) {
+      var ac = getAC(), t = ac.currentTime;
+      var len = Math.ceil(ac.sampleRate * duration);
+      var buf = ac.createBuffer(1, len, ac.sampleRate);
+      var d = buf.getChannelData(0);
+      for (var i = 0; i < len; i++) {
+        var crackle = Math.random() < 0.04 ? Math.random() * 2 * 1.8 : (Math.random() * 2 - 1) * 0.15;
+        d[i] = crackle * Math.pow(1 - i / len, 0.15);
+      }
+      var src = ac.createBufferSource(); src.buffer = buf;
+      var filt = ac.createBiquadFilter();
+      filt.type = 'bandpass'; filt.frequency.value = 3200; filt.Q.value = 0.8;
+      var g = ac.createGain(); g.gain.setValueAtTime(0.22, t);
+      g.gain.linearRampToValueAtTime(0.38, t + duration * 0.85);
+      g.gain.linearRampToValueAtTime(0.0001, t + duration);
+      src.connect(filt); filt.connect(g); g.connect(ac.destination);
+      src.start(t); src.stop(t + duration + 0.05);
+      return src;
+    }
+
+    function sfxTNT() {
+      var ac = getAC(), t = ac.currentTime;
+      var sub = ac.createOscillator(), subG = ac.createGain();
+      sub.type = 'sine'; sub.frequency.setValueAtTime(38, t);
+      sub.frequency.exponentialRampToValueAtTime(14, t + 0.55);
+      subG.gain.setValueAtTime(0.0001, t);
+      subG.gain.linearRampToValueAtTime(0.9, t + 0.012);
+      subG.gain.exponentialRampToValueAtTime(0.0001, t + 0.55);
+      sub.connect(subG); subG.connect(ac.destination); sub.start(t); sub.stop(t + 0.6);
+      var mid = ac.createOscillator(), midG = ac.createGain();
+      mid.type = 'triangle'; mid.frequency.setValueAtTime(65, t);
+      mid.frequency.exponentialRampToValueAtTime(28, t + 0.35);
+      midG.gain.setValueAtTime(0.0001, t);
+      midG.gain.linearRampToValueAtTime(0.5, t + 0.008);
+      midG.gain.exponentialRampToValueAtTime(0.0001, t + 0.35);
+      mid.connect(midG); midG.connect(ac.destination); mid.start(t); mid.stop(t + 0.38);
+      var len = Math.ceil(ac.sampleRate * 0.7);
+      var buf = ac.createBuffer(1, len, ac.sampleRate);
+      var d = buf.getChannelData(0);
+      for (var i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, 0.7);
+      var src = ac.createBufferSource(); src.buffer = buf;
+      var filt = ac.createBiquadFilter(); filt.type = 'lowpass'; filt.frequency.value = 900;
+      var ng = ac.createGain(); ng.gain.setValueAtTime(0.55, t);
+      ng.gain.exponentialRampToValueAtTime(0.0001, t + 0.7);
+      var rev = getReverbNode();
+      src.connect(filt); filt.connect(ng); ng.connect(ac.destination); ng.connect(rev);
+      src.start(t);
+    }
+
+    function sfxMegaTNT() {
+      var ac = getAC(), t = ac.currentTime;
+      var sub = ac.createOscillator(), subG = ac.createGain();
+      sub.type = 'sine'; sub.frequency.setValueAtTime(32, t);
+      sub.frequency.exponentialRampToValueAtTime(8, t + 1.1);
+      subG.gain.setValueAtTime(0.0001, t);
+      subG.gain.linearRampToValueAtTime(1.0, t + 0.015);
+      subG.gain.exponentialRampToValueAtTime(0.0001, t + 1.1);
+      sub.connect(subG); subG.connect(ac.destination); sub.start(t); sub.stop(t + 1.15);
+      var mid = ac.createOscillator(), midG = ac.createGain();
+      mid.type = 'triangle'; mid.frequency.setValueAtTime(65, t);
+      mid.frequency.exponentialRampToValueAtTime(20, t + 0.7);
+      midG.gain.setValueAtTime(0.0001, t);
+      midG.gain.linearRampToValueAtTime(0.8, t + 0.01);
+      midG.gain.exponentialRampToValueAtTime(0.0001, t + 0.7);
+      mid.connect(midG); midG.connect(ac.destination); mid.start(t); mid.stop(t + 0.75);
+      var len = Math.ceil(ac.sampleRate * 1.2);
+      var buf = ac.createBuffer(1, len, ac.sampleRate);
+      var d = buf.getChannelData(0);
+      for (var i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, 0.5);
+      var src = ac.createBufferSource(); src.buffer = buf;
+      var filt = ac.createBiquadFilter(); filt.type = 'lowpass'; filt.frequency.value = 700;
+      var ng = ac.createGain(); ng.gain.setValueAtTime(0.85, t);
+      ng.gain.exponentialRampToValueAtTime(0.0001, t + 1.2);
+      var rev = getReverbNode();
+      src.connect(filt); filt.connect(ng); ng.connect(ac.destination); ng.connect(rev);
+      src.start(t);
+    }
+
+    function sfxPickaxeChange() {
+      var ac = getAC(), t = ac.currentTime;
+      playNote(880, 'sine', 0.1, 0.01, 0.18, t);
+      playNote(1320, 'sine', 0.08, 0.01, 0.14, t + 0.06);
+    }
+
+    // Zombie groan — low guttural sound
+    var _lastZombieSfx = 0;
+    function sfxZombieGroan() {
+      var now = Date.now();
+      if (now - _lastZombieSfx < 2500) return;
+      _lastZombieSfx = now;
+      if (!_audioStarted) return;
+      var ac = getAC(), t = ac.currentTime;
+      // Zelda-style zombie moan: short descending square wave warble
+      var o1 = ac.createOscillator(), g1 = ac.createGain();
+      o1.type = 'square';
+      var base = 120 + Math.random() * 40;
+      o1.frequency.setValueAtTime(base, t);
+      o1.frequency.linearRampToValueAtTime(base * 0.6, t + 0.12);
+      o1.frequency.setValueAtTime(base * 0.8, t + 0.15);
+      o1.frequency.linearRampToValueAtTime(base * 0.4, t + 0.35);
+      g1.gain.setValueAtTime(0.0001, t);
+      g1.gain.linearRampToValueAtTime(0.09, t + 0.02);
+      g1.gain.setValueAtTime(0.07, t + 0.15);
+      g1.gain.exponentialRampToValueAtTime(0.0001, t + 0.4);
+      o1.connect(g1); g1.connect(ac.destination);
+      o1.start(t); o1.stop(t + 0.4);
+      // Second voice: detuned triangle for depth
+      var o2 = ac.createOscillator(), g2 = ac.createGain();
+      o2.type = 'triangle';
+      o2.frequency.setValueAtTime(base * 0.5, t);
+      o2.frequency.linearRampToValueAtTime(base * 0.25, t + 0.35);
+      g2.gain.setValueAtTime(0.06, t + 0.02);
+      g2.gain.exponentialRampToValueAtTime(0.0001, t + 0.38);
+      o2.connect(g2); g2.connect(ac.destination);
+      o2.start(t); o2.stop(t + 0.4);
+    }
+
+    function sfxZombieHurt() {
+      if (!_audioStarted) return;
+      var ac = getAC(), t = ac.currentTime;
+      // Organic groan: two detuned low oscillators with vibrato + breathy noise
+      var base = 90 + Math.random() * 30;
+      // Voice 1: main groan with pitch drop and vibrato
+      var o1 = ac.createOscillator(), g1 = ac.createGain();
+      o1.type = 'sawtooth';
+      o1.frequency.setValueAtTime(base * 1.3, t);
+      o1.frequency.linearRampToValueAtTime(base * 0.9, t + 0.08);
+      o1.frequency.linearRampToValueAtTime(base * 0.5, t + 0.35);
+      // Vibrato LFO
+      var lfo = ac.createOscillator(), lfoG = ac.createGain();
+      lfo.type = 'sine'; lfo.frequency.value = 6 + Math.random() * 4;
+      lfoG.gain.value = 8;
+      lfo.connect(lfoG); lfoG.connect(o1.frequency);
+      lfo.start(t); lfo.stop(t + 0.4);
+      // Lowpass to soften
+      var filt1 = ac.createBiquadFilter();
+      filt1.type = 'lowpass'; filt1.frequency.value = 350;
+      filt1.Q.value = 2;
+      g1.gain.setValueAtTime(0.0001, t);
+      g1.gain.linearRampToValueAtTime(0.14, t + 0.025);
+      g1.gain.setValueAtTime(0.12, t + 0.1);
+      g1.gain.exponentialRampToValueAtTime(0.0001, t + 0.38);
+      o1.connect(filt1); filt1.connect(g1); g1.connect(ac.destination);
+      o1.start(t); o1.stop(t + 0.4);
+      // Voice 2: detuned sub for body
+      var o2 = ac.createOscillator(), g2 = ac.createGain();
+      o2.type = 'triangle';
+      o2.frequency.setValueAtTime(base * 0.6, t);
+      o2.frequency.linearRampToValueAtTime(base * 0.3, t + 0.3);
+      g2.gain.setValueAtTime(0.08, t + 0.01);
+      g2.gain.exponentialRampToValueAtTime(0.0001, t + 0.32);
+      o2.connect(g2); g2.connect(ac.destination);
+      o2.start(t); o2.stop(t + 0.35);
+      // Breathy noise layer
+      var nLen = Math.ceil(ac.sampleRate * 0.18);
+      var buf = ac.createBuffer(1, nLen, ac.sampleRate);
+      var d = buf.getChannelData(0);
+      for (var i = 0; i < nLen; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / nLen, 1.5);
+      var src = ac.createBufferSource(); src.buffer = buf;
+      var nf = ac.createBiquadFilter(); nf.type = 'bandpass'; nf.frequency.value = 280; nf.Q.value = 1.5;
+      var ng = ac.createGain(); ng.gain.setValueAtTime(0.06, t);
+      ng.gain.exponentialRampToValueAtTime(0.0001, t + 0.18);
+      src.connect(nf); nf.connect(ng); ng.connect(ac.destination);
+      src.start(t);
+    }
+
+    function sfxZombieDeath() {
+      if (!_audioStarted) return;
+      var ac = getAC(), t = ac.currentTime;
+      // Zelda-style enemy death: descending cascade of square tones
+      var freqs = [300, 250, 200, 150, 100];
+      for (var i = 0; i < freqs.length; i++) {
+        var o = ac.createOscillator(), g = ac.createGain();
+        o.type = 'square';
+        var st = t + i * 0.06;
+        o.frequency.setValueAtTime(freqs[i], st);
+        o.frequency.linearRampToValueAtTime(freqs[i] * 0.7, st + 0.06);
+        g.gain.setValueAtTime(0.1, st);
+        g.gain.exponentialRampToValueAtTime(0.0001, st + 0.08);
+        o.connect(g); g.connect(ac.destination);
+        o.start(st); o.stop(st + 0.08);
+      }
+      // Final low thud
+      var ob = ac.createOscillator(), gb = ac.createGain();
+      ob.type = 'triangle';
+      ob.frequency.setValueAtTime(60, t + 0.3);
+      ob.frequency.linearRampToValueAtTime(30, t + 0.55);
+      gb.gain.setValueAtTime(0.08, t + 0.3);
+      gb.gain.exponentialRampToValueAtTime(0.0001, t + 0.55);
+      ob.connect(gb); gb.connect(ac.destination);
+      ob.start(t + 0.3); ob.stop(t + 0.55);
+    }
+
+    function sfxSkillActivate() {
+      var ac = getAC(), t = ac.currentTime;
+      playNote(440, 'sine', 0.1, 0.01, 0.12, t);
+      playNote(660, 'sine', 0.1, 0.01, 0.12, t + 0.07);
+      playNote(880, 'sine', 0.1, 0.01, 0.18, t + 0.14);
+    }
+
+    // ── Música de Boss ──────────────────────────────────────────────────────────
+    var bossMusic = { playing: false, timeout: null, step: 0 };
+    var BOSS_ROOT = 55.0;
+    var BOSS_SCALE = [0, 1, 4, 5, 7, 8, 10];
+
+    function bossScaleFreq(degree, octave) {
+      octave = octave || 0;
+      var idx = ((degree % BOSS_SCALE.length) + BOSS_SCALE.length) % BOSS_SCALE.length;
+      return BOSS_ROOT * Math.pow(2, (BOSS_SCALE[idx] + octave * 12) / 12);
+    }
+
+    var BOSS_BASS = [
+      { d: 0, oct: 0, dur: 0.22, vol: 0.28 }, { d: 0, oct: 0, dur: 0.22, vol: 0.20 },
+      { d: 1, oct: 0, dur: 0.22, vol: 0.22 }, { d: 0, oct: 0, dur: 0.22, vol: 0.18 },
+      { d: 0, oct: 0, dur: 0.22, vol: 0.26 }, { d: 4, oct: 0, dur: 0.22, vol: 0.20 },
+      { d: 3, oct: 0, dur: 0.22, vol: 0.22 }, { d: 0, oct: 0, dur: 0.22, vol: 0.18 }
+    ];
+
+    var BOSS_MELODY = [
+      { d: 0, oct: 2, dur: 0.18, vol: 0.09 }, { d: 1, oct: 2, dur: 0.18, vol: 0.08 },
+      { d: 0, oct: 2, dur: 0.18, vol: 0.09 }, { d: 4, oct: 1, dur: 0.36, vol: 0.10 },
+      { d: 3, oct: 2, dur: 0.18, vol: 0.08 }, { d: 1, oct: 2, dur: 0.18, vol: 0.07 },
+      { d: 0, oct: 2, dur: 0.36, vol: 0.09 }, { d: 6, oct: 1, dur: 0.36, vol: 0.08 }
+    ];
+
+    var BOSS_BEAT = 0.22;
+
+    function scheduleBossBeat() {
+      if (!bossMusic.playing) return;
+      var ac = getAC(), t = ac.currentTime;
+      var bn = BOSS_BASS[bossMusic.step % BOSS_BASS.length];
+      var bf = bossScaleFreq(bn.d, bn.oct);
+      var osc = ac.createOscillator(), g = ac.createGain(), filt = ac.createBiquadFilter();
+      filt.type = 'lowpass'; filt.frequency.value = 280; osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(bf, t);
+      g.gain.setValueAtTime(0.0001, t); g.gain.linearRampToValueAtTime(bn.vol, t + 0.01);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + bn.dur * 0.8);
+      osc.connect(filt); filt.connect(g); g.connect(ac.destination); osc.start(t); osc.stop(t + bn.dur);
+      if (bossMusic.step % 2 === 0) {
+        var mn = BOSS_MELODY[(bossMusic.step / 2 | 0) % BOSS_MELODY.length];
+        playNote(bossScaleFreq(mn.d, mn.oct), 'sine', mn.vol, 0.01, mn.dur * 0.7, t);
+      }
+      bossMusic.step++;
+      bossMusic.timeout = setTimeout(scheduleBossBeat, BOSS_BEAT * 1000);
+    }
+
+    function startBossMusic() {
+      if (bossMusic.playing) return;
+      bossMusic.playing = true; bossMusic.step = 0;
+      scheduleBossBeat();
+    }
+
+    function stopBossMusic() {
+      bossMusic.playing = false;
+      if (bossMusic.timeout) { clearTimeout(bossMusic.timeout); bossMusic.timeout = null; }
+    }
+    // ── Trilha sonora (estilo Aquatic Amb DKC) ─────────────────────────────
+    var musicPlaying = false;
+    var musicTimeout = null;
+
+    // Escala de Ré menor pentatônica + algumas notas extras — clima aquático
+    var ROOT = 73.42; // D2
+    var SCALE = [0, 3, 5, 7, 10, 12, 15, 17, 19, 22, 24, 27, 29]; // semitoms
+
+    function scaleFreq(degree, octave) {
+      octave = octave || 0;
+      return ROOT * Math.pow(2, (SCALE[degree % SCALE.length] + octave * 12) / 12);
+    }
+
+    // Padrão de baixo pulsante (2 compassos)
+    var BASS_PATTERN = [
+      { d: 0, oct: 0, dur: 0.9, vol: 0.18 },
+      { d: 4, oct: 0, dur: 0.45, vol: 0.10 },
+      { d: 2, oct: 0, dur: 0.45, vol: 0.10 },
+      { d: 0, oct: 0, dur: 0.9, vol: 0.16 },
+      { d: 7, oct: -1, dur: 0.45, vol: 0.12 },
+      { d: 4, oct: 0, dur: 0.45, vol: 0.10 },
+    ];
+
+    // Melodia flutuante (arpejo etéreo)
+    var MELODY_PATTERN = [
+      { d: 4, oct: 1, dur: 0.6, vol: 0.07 },
+      { d: 7, oct: 1, dur: 0.6, vol: 0.06 },
+      { d: 9, oct: 1, dur: 0.6, vol: 0.07 },
+      { d: 7, oct: 1, dur: 0.6, vol: 0.05 },
+      { d: 4, oct: 1, dur: 0.6, vol: 0.07 },
+      { d: 2, oct: 1, dur: 0.6, vol: 0.06 },
+      { d: 0, oct: 1, dur: 0.6, vol: 0.07 },
+      { d: 2, oct: 1, dur: 0.6, vol: 0.05 },
+    ];
+
+    // Pad de fundo (acorde sustentado)
+    var PAD_CHORDS = [
+      [0, 4, 7],   // Dm
+      [0, 3, 7],   // Dm7 parcial
+      [2, 5, 9],   // F
+      [0, 4, 7],   // Dm
+    ];
+
+    var musicStep = 0, bassStep = 0, melStep = 0, padStep = 0;
+    var BEAT = 0.52; // duração de um beat em segundos
+
+    function scheduleMusicBeat() {
+      if (!musicPlaying) return;
+      var ac = getAC();
+      var t = ac.currentTime;
+
+      // ── baixo ──
+      var bn = BASS_PATTERN[bassStep % BASS_PATTERN.length];
+      var bf = scaleFreq(bn.d, bn.oct);
+      playNote(bf, 'sine', bn.vol, 0.02, bn.dur * 0.85, t);
+      // sub-harmônico
+      playNote(bf * 0.5, 'sine', bn.vol * 0.5, 0.02, bn.dur * 0.85, t);
+      bassStep++;
+
+      // ── melodia (a cada 2 beats) ──
+      if (musicStep % 2 === 0) {
+        var mn = MELODY_PATTERN[melStep % MELODY_PATTERN.length];
+        var mf = scaleFreq(mn.d, mn.oct);
+        playNote(mf, 'sine', mn.vol, 0.04, mn.dur * 1.2, t);
+        playNote(mf * 1.005, 'triangle', mn.vol * 0.4, 0.04, mn.dur * 1.4, t); // chorus leve
+        melStep++;
+      }
+
+      // ── pad (a cada 4 beats) ──
+      if (musicStep % 4 === 0) {
+        var chord = PAD_CHORDS[padStep % PAD_CHORDS.length];
+        for (var ci = 0; ci < chord.length; ci++) {
+          var pf = scaleFreq(chord[ci], 1);
+          playNote(pf, 'sine', 0.04, 0.15, BEAT * 3.5, t);
+        }
+        padStep++;
+      }
+
+      // ── glitter (nota aleatória ocasional) ──
+      if (Math.random() < 0.25) {
+        var gd = SCALE[Math.floor(Math.random() * SCALE.length)];
+        var gf = ROOT * Math.pow(2, (gd + 36) / 12);
+        playNote(gf, 'sine', 0.04, 0.01, 0.3, t + Math.random() * BEAT * 0.8);
+      }
+
+      musicStep++;
+      musicTimeout = setTimeout(scheduleMusicBeat, BEAT * 1000);
+    }
+
+    function startMusic() {
+      if (musicPlaying) return;
+      musicPlaying = true;
+      musicStep = 0; bassStep = 0; melStep = 0; padStep = 0;
+      scheduleMusicBeat();
+    }
+
+    function stopMusic() {
+      musicPlaying = false;
+      if (musicTimeout) clearTimeout(musicTimeout);
+    }
+
+    // ── Integração com o jogo ─────────────────────────────────────────────────────
+    // inicia música no primeiro input do usuário
+    var _audioStarted = false;
+    function ensureAudio() {
+      if (_audioStarted) return;
+      _audioStarted = true;
+      startMusic();
+    }
+    window.addEventListener('keydown', ensureAudio, { once: false });
+    window.addEventListener('pointerdown', ensureAudio, { once: false });
+
+    // Atalhos de teclado (Skills e Reset)
+    window.addEventListener('keydown', function (e) {
+      if (e.key === 'r' || e.key === 'R') {
+        processedComments.clear();
+        _firstFetchDone = false;
+        restart();
+        spawnText(canvas.width / 2, canvas.height / 2, 'RESETARE MECI!', '#00ffff');
+        // Offline mode: just reset state
+        _gameStarted = true;
+        hideApiSetup();
+      }
+      // Teclas 1, 2, 3, 4 para skills (opcional, já que o usuário quer remover automáticas)
+      if (e.key === '1') activateTNT();
+      if (e.key === '2') activateMegaTNT();
+      if (e.key === '3') activateDoublePick();
+      if (e.key === '4') activateStorm();
+      if (e.key === '7') spawnBoss(); // teste
+      if (e.key === 'u' || e.key === 'U') triggerBotrixEvent('follow', '@coccsa7');
+      if (e.key === 'i' || e.key === 'I') triggerBotrixEvent('superchat', '@coccsa7');
+      if (e.key === 'o' || e.key === 'O') triggerBotrixEvent('member', '@coccsa7');
+      if (e.key === 'p' || e.key === 'P') triggerBotrixEvent('gift', '@coccsa7');
+      if (e.key === 's' || e.key === 'S') {
+        for (var i = 0; i < 20; i++) {
+          var botName = '@Bot_' + (1 + Math.floor(Math.random() * 9999));
+          var botAvatar = 'https://ui-avatars.com/api/?name=' + encodeURIComponent(botName) + '&background=random&size=100';
+          spawnUserPickaxe(botName, botAvatar);
+        }
+        spawnText(canvas.width / 2, camY + 100, '20 DE BOȚI ADAUGAȚI!', '#ffff00');
+      }
+    });
+
+    // ── Touch: double tap = spawn player + TNT, triple tap = Mega TNT ──
+    var _tapCount = 0;
+    var _tapTimer = null;
+    var _TAP_DELAY = 350;
+    var _tapPlayerCount = 0;
+
+    canvas.addEventListener('touchstart', function(e) {
+      // no long press action
+    }, { passive: true });
+
+    canvas.addEventListener('touchend', function(e) {
+      e.preventDefault();
+      ensureAudio();
+      _tapCount++;
+      if (_tapTimer) clearTimeout(_tapTimer);
+      _tapTimer = setTimeout(function() {
+        if (_tapCount === 2) {
+          _tapPlayerCount++;
+          var tapName = '@Player_' + _tapPlayerCount;
+          var tapAvatar = 'https://ui-avatars.com/api/?name=' + encodeURIComponent(tapName) + '&background=random&size=100';
+          spawnUserPickaxe(tapName, tapAvatar);
+          activateTNT();
+        }
+        else if (_tapCount >= 3) activateMegaTNT();
+        _tapCount = 0;
+        _tapTimer = null;
+      }, _TAP_DELAY);
+    }, { passive: false });
+
+    canvas.addEventListener('contextmenu', function(e) { e.preventDefault(); });
+
+    // init
+    ensureRows(0, VIS + 4);
+    spawnPick();
+
+    // Carrega pontuações persistentes do localStorage
+    (function() {
+      try {
+        var saved = JSON.parse(localStorage.getItem('pd_persistent_scores') || '{}');
+        if (saved && typeof saved === 'object' && !Array.isArray(saved)) {
+          persistentScores = saved;
+        }
+        console.log('Scores loaded from localStorage:', Object.keys(persistentScores).length);
+      } catch(e) { console.error('Error loading scores:', e); }
+    })();
+
+    // Carrega ranking para avatares
+    var rankingData = [];
+    (function() {
+      try {
+        var saved = JSON.parse(localStorage.getItem('pd_ranking') || '[]');
+        if (Array.isArray(saved)) rankingData = saved;
+      } catch(e) {}
+    })();
+
+    loop();
+
+    function savePersistentScores() {
+      try {
+        localStorage.setItem('pd_persistent_scores', JSON.stringify(persistentScores));
+      } catch(e) { console.error('Error saving scores:', e); }
+    }
+    setInterval(savePersistentScores, 15000); // Salva a cada 15s
+
+    // ── API Key Management System ──────────────────────────────────────────────
+    var _tiktokUsername = localStorage.getItem('pd_tiktok_username') || '';
+    var _apiConnected = false;
+    var _apiCheckInterval = null;
+    var _apiSetupShown = false;
+    var _gameStarted = false;
+    var _ws = null;
+
+    function showApiSetup(msg) {
+      if (_gameStarted) { showApiBanner(msg); return; }
+      var overlay = document.getElementById('apiSetupOverlay');
+      overlay.style.display = 'flex';
+      _apiSetupShown = true;
+      var errEl = document.getElementById('apiSetupError');
+      var sucEl = document.getElementById('apiSetupSuccess');
+      errEl.style.display = 'none';
+      sucEl.style.display = 'none';
+      if (msg) { errEl.style.display = 'block'; errEl.textContent = msg; }
+      if (_tiktokUsername) document.getElementById('tiktokUsernameInput').value = _tiktokUsername;
+    }
+
+    function hideApiSetup() {
+      document.getElementById('apiSetupOverlay').style.display = 'none';
+      _apiSetupShown = false;
+    }
+
+    function showApiBanner(msg) {
+      var existing = document.getElementById('apiBanner');
+      if (existing) existing.remove();
+      var banner = document.createElement('div');
+      banner.id = 'apiBanner';
+      banner.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:99998;background:rgba(0,0,0,0.85);border:1px solid #ff4444;border-radius:12px;padding:16px 24px;color:#fff;font-family:Arial,sans-serif;text-align:center;max-width:360px;width:90%;box-shadow:0 0 30px rgba(255,0,0,0.2);';
+      banner.innerHTML =
+        '<div style="font-size:24px;margin-bottom:8px;">⚠️</div>' +
+        '<div style="font-size:14px;margin-bottom:12px;color:#ffaa00;">TikTok connection lost</div>' +
+        '<div style="font-size:12px;color:#aaa;margin-bottom:14px;">' + (msg || 'The game continues offline.') + '</div>' +
+        '<div style="display:flex;gap:8px;justify-content:center;">' +
+          '<button onclick="openApiPopup()" style="padding:8px 16px;border:none;border-radius:8px;background:#00ff88;color:#000;font-weight:bold;font-size:13px;cursor:pointer;">Reconnect</button>' +
+          '<button onclick="dismissApiBanner()" style="padding:8px 16px;border:1px solid #555;border-radius:8px;background:transparent;color:#888;font-size:13px;cursor:pointer;">Dismiss</button>' +
+        '</div>';
+      document.body.appendChild(banner);
+    }
+
+    function dismissApiBanner() {
+      var b = document.getElementById('apiBanner');
+      if (b) b.remove();
+    }
+
+    function openApiPopup() {
+      dismissApiBanner();
+      _gameStarted = false;
+      showApiSetup('Enter a TikTok username to reconnect.');
+    }
+
+    function tiktokConnect() {
+      var btn = document.getElementById('apiTestBtn');
+      var errEl = document.getElementById('apiSetupError');
+      var sucEl = document.getElementById('apiSetupSuccess');
+      var username = document.getElementById('tiktokUsernameInput').value.trim().replace(/^@/, '');
+      errEl.style.display = 'none';
+      sucEl.style.display = 'none';
+
+      if (!username) { errEl.style.display = 'block'; errEl.textContent = 'Username is required.'; return; }
+
+      btn.textContent = 'Connecting...';
+      btn.disabled = true;
+
+      _tiktokUsername = username;
+      localStorage.setItem('pd_tiktok_username', username);
+
+      ownerName = '@' + username;
+      ownerName = ownerName.toLowerCase();
+      pick.userName = ownerName;
+      var cfg = JSON.parse(localStorage.getItem('pd_config') || '{}');
+      cfg.owner_name = ownerName;
+      localStorage.setItem('pd_config', JSON.stringify(cfg));
+      if (!persistentScores[ownerName]) persistentScores[ownerName] = { score: 0, avatar: '', color: '#ffdd44' };
+
+      // Connect via WebSocket to our server
+      connectWebSocket(function(success) {
+        btn.textContent = 'Connect';
+        btn.disabled = false;
+        if (success) {
+          // Send connect command to server
+          if (_ws && _ws.readyState === 1) {
+            _ws.send(JSON.stringify({ action: 'connect', username: username }));
+          }
+          sucEl.style.display = 'block';
+          sucEl.textContent = 'Connecting to @' + username + '...';
+        } else {
+          errEl.style.display = 'block';
+          errEl.textContent = 'Could not connect to server. Make sure the server is running (npm start).';
+        }
+      });
+    }
+
+    function tiktokSkip() {
+      hideApiSetup();
+      _apiConnected = false;
+      _gameStarted = true;
+      var dotApi = document.getElementById('statusDotApi');
+      var txtApi = document.getElementById('statusTextApi');
+      if (dotApi) dotApi.classList.remove('online');
+      if (txtApi) { txtApi.textContent = 'TikTok: Off'; txtApi.style.color = '#ffaa00'; }
+    }
+
+    function connectWebSocket(callback) {
+      if (_ws) { try { _ws.close(); } catch(e) {} }
+      // Always connect to the server origin; fallback to localhost:3000
+      var wsHost = location.host || 'localhost:3000';
+      var protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
+      var wsUrl = protocol + '//' + wsHost;
+      console.log('[WS] Connecting to', wsUrl);
+      try {
+        _ws = new WebSocket(wsUrl);
+      } catch(e) {
+        console.error('[WS] Failed to create WebSocket:', e);
+        if (callback) callback(false);
+        return;
+      }
+
+      _ws.onopen = function() {
+        console.log('WebSocket connected to server');
+        window._wsReconnectCount = 0; // Reset reconnect counter on success
+        // Auto-resend connect command on reconnect
+        if (!callback && _tiktokUsername && _gameStarted) {
+          console.log('[WS] Reconnected — resending connect for @' + _tiktokUsername);
+          _ws.send(JSON.stringify({ action: 'connect', username: _tiktokUsername }));
+        }
+        if (callback) { callback(true); callback = null; }
+      };
+
+      _ws.onmessage = function(evt) {
+        console.log('[WS RAW] Received message from server, length:', evt.data.length);
+        try {
+          var data = JSON.parse(evt.data);
+          if (data.type === 'chat' || data.type === 'like' || data.type === 'member') {
+            console.log('[TikTok]', data.type, data.user || data.nickname, data.comment || '');
+          }
+          handleTikTokEvent(data);
+        } catch(e) {
+          console.error('[WebSocket] Error processing message:', e);
+        }
+      };
+
+      _ws.onclose = function(evt) {
+        console.log('[WS] Connection closed. Code:', evt.code, 'Reason:', evt.reason, 'Clean:', evt.wasClean);
+        _apiConnected = false;
+        var dotApi = document.getElementById('statusDotApi');
+        var txtApi = document.getElementById('statusTextApi');
+        if (dotApi) dotApi.classList.remove('online');
+        if (txtApi) { txtApi.textContent = 'TikTok: Offline'; txtApi.style.color = '#ff4444'; }
+        // Auto-reconnect with backoff (15s, 30s, 60s, max 5 attempts)
+        if (!window._wsReconnectCount) window._wsReconnectCount = 0;
+        window._wsReconnectCount++;
+        if (window._wsReconnectCount <= 5 && _tiktokUsername && _gameStarted) {
+          var delay = Math.min(15000 * window._wsReconnectCount, 60000);
+          console.log('[WS] Reconnecting in ' + (delay/1000) + 's (attempt ' + window._wsReconnectCount + '/5)');
+          setTimeout(function() {
+            if (_tiktokUsername && _gameStarted) connectWebSocket();
+          }, delay);
+        } else if (window._wsReconnectCount > 5) {
+          console.log('[WS] Max reconnect attempts reached. Use the Connect button to retry.');
+          if (txtApi) { txtApi.textContent = 'TikTok: Disconnected'; txtApi.style.color = '#ff4444'; }
+        }
+      };
+
+      _ws.onerror = function(err) {
+        console.error('[WS] WebSocket error:', err);
+        if (callback) { callback(false); callback = null; }
+      };
+    }
+
+    function handleTikTokEvent(data) {
+      console.log('[handleTikTokEvent] Received:', data.type, JSON.stringify(data).substring(0, 200));
+      var dotApi = document.getElementById('statusDotApi');
+      var txtApi = document.getElementById('statusTextApi');
+
+      if (data.type === 'connected') {
+        _apiConnected = true;
+        _gameStarted = true;
+        hideApiSetup();
+        dismissApiBanner();
+        if (dotApi) dotApi.classList.add('online');
+        if (txtApi) { txtApi.textContent = 'TikTok: ON'; txtApi.style.color = '#00ff88'; }
+        console.log('Connected to TikTok @' + data.username);
+      }
+
+      else if (data.type === 'status') {
+        if (data.connected) {
+          _apiConnected = true;
+          _gameStarted = true;
+          hideApiSetup();
+          if (dotApi) dotApi.classList.add('online');
+          if (txtApi) { txtApi.textContent = 'TikTok: ON'; txtApi.style.color = '#00ff88'; }
+        }
+      }
+
+      else if (data.type === 'error') {
+        var errEl = document.getElementById('apiSetupError');
+        if (errEl && _apiSetupShown) { errEl.style.display = 'block'; errEl.textContent = data.message; }
+        var btn = document.getElementById('apiTestBtn');
+        if (btn) { btn.textContent = 'Connect'; btn.disabled = false; }
+        if (!_apiSetupShown && _gameStarted) showApiBanner(data.message);
+      }
+
+      else if (data.type === 'disconnected' || data.type === 'streamEnd') {
+        _apiConnected = false;
+        if (dotApi) dotApi.classList.remove('online');
+        if (txtApi) { txtApi.textContent = 'TikTok: OFF'; txtApi.style.color = '#ffaa00'; }
+        if (data.type === 'streamEnd') {
+          spawnText(canvas.width / 2, camY + canvas.height / 2, 'TRANSMISIA S-A ÎNCHEIAT', '#ff4444');
+        }
+      }
+
+      else if (data.type === 'chat') {
+        var cUser = '@' + (data.user || data.nickname || '').toLowerCase();
+        if (cUser === '@') return; // skip truly anonymous chat
+        var cAvatar = data.avatar || '';
+        var cText = data.comment || '';
+        console.log('[Chat Handler] user:', cUser, '| comment:', cText);
+        lastActivity[cUser] = Date.now();
+
+        // Preload avatar
+        if (cAvatar && !avatarCache[cAvatar]) {
+          var img = new Image(); img.crossOrigin = 'anonymous'; img.src = cAvatar;
+          avatarCache[cAvatar] = img;
+        }
+
+        // Check if owner
+        var isOwner = ownerName && cUser === ownerName;
+        if (isOwner && cAvatar) {
+          pick.userAvatarUrl = cAvatar;
+          if (!persistentScores[ownerName]) persistentScores[ownerName] = { score: 0, avatar: cAvatar, color: '#ffdd44' };
+          else persistentScores[ownerName].avatar = cAvatar;
+        }
+
+        // Auto-join on first message or "play"/"join" command
+        if (!isOwner && !userPicks.some(function(up) { return up.userName === cUser; })) {
+          spawnUserPickaxe(cUser, cAvatar);
+        }
+
+        var msg = cText.toLowerCase();
+        if (msg.includes('play') || msg.includes('join')) {
+          spawnUserPickaxe(cUser, cAvatar);
+        }
+
+        // TNT commands
+        var userPick = isOwner ? pick : userPicks.find(function(up) { return up.userName === cUser; });
+        var tx = userPick ? userPick.x : undefined;
+        var ty = userPick ? userPick.y : undefined;
+
+        if (msg.includes('power tnt') || msg.includes('mega tnt') || msg.includes('powertnt')) {
+          activateMegaTNT(tx, ty, cUser, cAvatar);
+        } else if (msg.includes('tnt')) {
+          activateTNT(tx, ty, cUser, cAvatar);
+        }
+
+        if (msg.includes('bot20ok')) {
+          for (var bi = 0; bi < 20; bi++) {
+            var botName = '@Bot_' + (1 + Math.floor(Math.random() * 9999));
+            var botAvatar = 'https://ui-avatars.com/api/?name=' + encodeURIComponent(botName) + '&background=random&size=100';
+            spawnUserPickaxe(botName, botAvatar);
+          }
+          spawnText(canvas.width / 2, camY + 100, 'DE BOȚI ADAUGAȚI!', '#ffff00');
+        }
+      }
+
+      else if (data.type === 'member') {
+        var mUser = '@' + (data.user || data.nickname || '').toLowerCase();
+        if (!mUser || mUser === '@') return; // skip anonymous members
+        var mAvatar = data.avatar || '';
+        lastActivity[mUser] = Date.now();
+        if (mAvatar && !avatarCache[mAvatar]) {
+          var img = new Image(); img.crossOrigin = 'anonymous'; img.src = mAvatar;
+          avatarCache[mAvatar] = img;
+        }
+        spawnUserPickaxe(mUser, mAvatar);
+      }
+
+      else if (data.type === 'gift') {
+        var gUser = '@' + (data.user || data.nickname || 'unknown').toLowerCase();
+        var gAvatar = data.avatar || '';
+        var giftName = (data.giftName || '').toLowerCase();
+        lastActivity[gUser] = Date.now();
+        if (gAvatar && !avatarCache[gAvatar]) {
+          var img = new Image(); img.crossOrigin = 'anonymous'; img.src = gAvatar;
+          avatarCache[gAvatar] = img;
+        }
+        // Auto-join gifter
+        spawnUserPickaxe(gUser, gAvatar);
+
+        var gPick = userPicks.find(function(up) { return up.userName === gUser; });
+        var gx = gPick ? gPick.x : (pick ? pick.x : canvas.width / 2);
+        var gy = gPick ? gPick.y : (pick ? pick.y : camY + canvas.height / 2);
+        var diamonds = data.diamondCount || 1;
+        var repeat = data.repeatCount || 1;
+
+        // Top 4 popular TikTok gifts → TNT skills
+        if (giftName.includes('rose') || giftName.includes('rosa')) {
+          // Rose (1 coin) → 1 TNT per repeat
+          for (var gi = 0; gi < Math.min(repeat, 5); gi++) {
+            activateTNT(gx + (Math.random() - 0.5) * TILE * 3, gy, gUser, gAvatar);
+          }
+          spawnText(gx, gy - 30, '🌹 ' + repeat + ' TNT!', '#ff6688');
+          score += 10 * repeat;
+        } else if (giftName.includes('tiktok')) {
+          // TikTok (1 coin) → 2 TNTs per repeat
+          for (var gi = 0; gi < Math.min(repeat * 2, 10); gi++) {
+            activateTNT(gx + (Math.random() - 0.5) * TILE * 4, gy, gUser, gAvatar);
+          }
+          spawnText(gx, gy - 30, '🎵 ' + (repeat * 2) + ' TNT!', '#00f2ea');
+          score += 20 * repeat;
+        } else if (giftName.includes('gg')) {
+          // GG (1 coin) → 3 TNTs per repeat
+          for (var gi = 0; gi < Math.min(repeat * 3, 15); gi++) {
+            activateTNT(gx + (Math.random() - 0.5) * TILE * 5, gy, gUser, gAvatar);
+          }
+          spawnText(gx, gy - 30, '🎮 ' + (repeat * 3) + ' TNT!', '#44ff44');
+          score += 30 * repeat;
+        } else if (giftName.includes('like') || giftName.includes('heart')) {
+          // Like/Heart (5 coins) → 1 Mega TNT per repeat
+          for (var gi = 0; gi < Math.min(repeat, 3); gi++) {
+            activateMegaTNT(gx + (Math.random() - 0.5) * TILE * 3, gy, gUser, gAvatar);
+          }
+          spawnText(gx, gy - 30, '❤️ ' + repeat + ' MEGA TNT!', '#ff4488');
+          score += 50 * repeat;
+        } else if (diamonds >= 100) {
+          // Premium gifts → big event
+          triggerBotrixEvent('gift', gUser, gAvatar);
+        } else if (diamonds >= 10) {
+          // Medium gifts → medium event
+          triggerBotrixEvent('superchat', gUser, gAvatar);
+        } else {
+          // Other small gifts → TNT based on repeat count
+          for (var gi = 0; gi < Math.min(repeat, 5); gi++) {
+            activateTNT(gx + (Math.random() - 0.5) * TILE * 3, gy, gUser, gAvatar);
+          }
+          spawnText(gx, gy - 30, '🎁 ' + repeat + ' TNT!', '#ffaa44');
+          score += 10 * repeat;
+        }
+
+        // Points for gifter
+        if (gUser !== ownerName) {
+          if (!persistentScores[gUser]) persistentScores[gUser] = { score: 0, avatar: gAvatar, color: '#ff88ff' };
+          persistentScores[gUser].score += diamonds * repeat;
+        }
+      }
+
+      else if (data.type === 'follow') {
+        var fUser = '@' + (data.user || data.nickname || 'unknown').toLowerCase();
+        var fAvatar = data.avatar || '';
+        lastActivity[fUser] = Date.now();
+        if (fAvatar && !avatarCache[fAvatar]) {
+          var img = new Image(); img.crossOrigin = 'anonymous'; img.src = fAvatar;
+          avatarCache[fAvatar] = img;
+        }
+        spawnUserPickaxe(fUser, fAvatar);
+        triggerBotrixEvent('follow', fUser, fAvatar);
+      }
+
+      else if (data.type === 'like') {
+        var lName = (data.user || data.nickname || '').toLowerCase();
+        if (!lName || lName === 'unknown') return; // skip anonymous likes
+        var lUser = '@' + lName;
+        var lAvatar = data.avatar || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(lName) + '&background=random&size=100';
+        lastActivity[lUser] = Date.now();
+        // Like (double tap) = join the game
+        if (lAvatar && !avatarCache[lAvatar]) {
+          var img = new Image(); img.crossOrigin = 'anonymous'; img.src = lAvatar;
+          avatarCache[lAvatar] = img;
+        }
+        spawnUserPickaxe(lUser, lAvatar);
+        // Particles + points on their pickaxe
+        var lPick = userPicks.find(function(up) { return up.userName === lUser; });
+        var lx = lPick ? lPick.x : (pick ? pick.x : canvas.width / 2);
+        var ly = lPick ? lPick.y : (pick ? pick.y : camY + canvas.height / 2);
+        spawnParts(lx, ly, '#ff4488', 5);
+        var likePts = Math.min(data.likeCount || 1, 10) * 2;
+        score += likePts;
+        spawnText(lx, ly - 20, '+' + likePts + ' ❤', '#ff4488');
+        if (lUser && lUser !== ownerName) {
+          if (!persistentScores[lUser]) persistentScores[lUser] = { score: 0, avatar: lAvatar, color: '#ff4488' };
+          persistentScores[lUser].score += likePts;
+        }
+      }
+
+      else if (data.type === 'share') {
+        var sUser = '@' + (data.user || data.nickname || 'unknown').toLowerCase();
+        var sAvatar = data.avatar || '';
+        lastActivity[sUser] = Date.now();
+        // Share = bonus TNT
+        var sPick = userPicks.find(function(up) { return up.userName === sUser; });
+        var sx = sPick ? sPick.x : (pick ? pick.x : canvas.width / 2);
+        var sy = sPick ? sPick.y : (pick ? pick.y : camY + canvas.height / 2);
+        activateMegaTNT(sx, sy, sUser, sAvatar);
+        score += 100;
+        spawnText(sx, sy - 30, '+100 SHARE!', '#44ddff');
+        if (!persistentScores[sUser]) persistentScores[sUser] = { score: 0, avatar: sAvatar, color: '#44ddff' };
+        persistentScores[sUser].score += 100;
+      }
+
+      else if (data.type === 'roomUser') {
+        // Could display viewer count somewhere
+      }
+    }
+
+    // ── Initial connection flow ──
+    // Load saved username and try auto-connect
+    (function() {
+      var savedUsername = localStorage.getItem('pd_tiktok_username');
+      if (savedUsername) {
+        _tiktokUsername = savedUsername;
+        document.getElementById('tiktokUsernameInput').value = savedUsername;
+        ownerName = '@' + savedUsername.toLowerCase();
+        pick.userName = ownerName;
+        if (!persistentScores[ownerName]) persistentScores[ownerName] = { score: 0, avatar: '', color: '#ffdd44' };
+      }
+      showApiSetup();
+    })();
+
+    // ── Monitor de Conexão e Chat ────────────────────────────────────────────────
+    var processedComments = new Set();
+    var avatarCache = {};
+
+    // Restore owner avatar now that both persistentScores and avatarCache are ready
+    (function() {
+      if (ownerName && persistentScores[ownerName] && persistentScores[ownerName].avatar) {
+        var av = persistentScores[ownerName].avatar;
+        pick.userAvatarUrl = av;
+        if (!avatarCache[av]) {
+          var img = new Image(); img.crossOrigin = 'anonymous'; img.src = av;
+          avatarCache[av] = img;
+        }
+      }
+    })();
+
+    function spawnUserPickaxe(userName, avatarUrl) {
+      // Higieniza o nome para evitar "@" duplicado
+      userName = userName.replace(/^@@+/, '@');
+
+      // Normaliza para lowercase para evitar duplicatas por casing
+      userName = userName.toLowerCase();
+
+      // Filtra usuários inválidos/desconhecidos
+      if (!userName || userName === '@' || userName === '@unknown' || userName === '@undefined') {
+        return;
+      }
+
+      // Owner controls the main pickaxe, not a separate one
+      if (ownerName && userName === ownerName) {
+        return;
+      }
+
+      // Ignora se o usuário já tem uma picareta ativa
+      if (userPicks.some(function(up) { return up.userName === userName; })) {
+        return;
+      }
+
+      // Fallback avatar
+      if (!avatarUrl) {
+        avatarUrl = 'https://ui-avatars.com/api/?name=' + encodeURIComponent(userName.replace('@','')) + '&background=random&size=100';
+      }
+
+      // Precarrega avatar
+      if (avatarUrl && !avatarCache[avatarUrl]) {
+        var img = new Image();
+        img.crossOrigin = "anonymous";
+        img.src = avatarUrl;
+        avatarCache[avatarUrl] = img;
+      }
+
+      var spawnX = pick ? pick.x : canvas.width / 2;
+      var spawnY = pick ? pick.y : camY + canvas.height * 0.3;
+
+      var p = {
+        x: spawnX,
+        y: spawnY,
+        vx: (Math.random() - 0.5) * 12,
+        vy: -2 - Math.random() * 8,
+        ang: Math.random() * Math.PI * 2,
+        spin: (Math.random() - 0.5) * 0.4,
+        halfSize: PICK_HALF,
+        stuck: false,
+        stuckTimer: 0,
+        userName: userName,
+        userAvatarUrl: avatarUrl,
+        score: (persistentScores[userName] ? persistentScores[userName].score : 0),
+        color: (persistentScores[userName] && persistentScores[userName].color)
+          ? persistentScores[userName].color
+          : 'hsl(' + Math.floor(Math.random() * 360) + ', 100%, 70%)'
+      };
+
+      // Garante que está na persistência
+      if (!persistentScores[userName]) {
+        persistentScores[userName] = { score: p.score, avatar: avatarUrl, color: p.color };
+      } else {
+        if (avatarUrl) persistentScores[userName].avatar = avatarUrl;
+        if (!persistentScores[userName].color) persistentScores[userName].color = p.color;
+      }
+
+      userPicks.push(p);
+      lastActivity[userName] = Date.now();
+      spawnText(p.x, p.y, userName + ' S-A ALĂTURAT!', '#00ff88');
+      if (_audioStarted) sfxSkillActivate();
+    }
+
+    function updateLeaderboard() {
+      var list = document.getElementById('leaderboardList');
+      if (!list) return;
+
+      var now = Date.now();
+      // Only show active players (with activity in last 3 min) + owner always visible
+      var activePlayers = Object.keys(persistentScores).filter(function (name) {
+        if (ownerName && name === ownerName) return true; // owner always in leaderboard
+        return lastActivity[name] && (now - lastActivity[name] <= INACTIVE_MS);
+      }).map(function (name) {
+        return {
+          userName: name,
+          score: persistentScores[name].score,
+          userAvatarUrl: persistentScores[name].avatar
+        };
+      });
+
+      var sorted = activePlayers
+        .sort((a, b) => (b.score || 0) - (a.score || 0))
+        .slice(0, 10);
+
+      if (sorted.length === 0) {
+        list.innerHTML = '<div style="text-align:center; opacity:0.5; font-size:12px;">Waiting for players...</div>';
+        return;
+      }
+
+      var html = '';
+      sorted.forEach((u, i) => {
+        var av = u.userAvatarUrl || '';
+        html += `
+      <div class="lb-item">
+        <div class="lb-rank">#${i + 1}</div>
+        <img class="lb-avatar" src="${av}" onerror="this.src='pickaxe/wooden_pickaxe.png'">
+        <div class="lb-name">${u.userName}</div>
+        <div class="lb-score">${Math.floor(u.score || 0)}</div>
+      </div>
+    `;
+      });
+      list.innerHTML = html;
+    }
+    setInterval(updateLeaderboard, 1000);
+
+    // Remove inactive players every 30s
+    setInterval(function () {
+      var now = Date.now();
+      for (var i = userPicks.length - 1; i >= 0; i--) {
+        var up = userPicks[i];
+        if (up.isStorm) continue; // storm picks are not real players
+        var last = lastActivity[up.userName] || 0;
+        if (now - last > INACTIVE_MS) {
+          userPicks.splice(i, 1);
+        }
+      }
+    }, 30000); // atualiza a cada 1s
+
+    // ── Eventos do Botrix (follow, superchat, member, gift) ──
+    function triggerBotrixEvent(type, name, avatar) {
+      var cx = pick ? pick.x : canvas.width / 2;
+      var cy = pick ? pick.y : camY + canvas.height * 0.5;
+      var config = {
+        follow:    { icon: '⭐', title: 'NEW FOLLOWER!',          color: '#44ff88', pts: 200,  dur: 150 },
+        superchat: { icon: '💎', title: 'SUPER CHAT!',            color: '#ffdd44', pts: 1000, dur: 200 },
+        member:    { icon: '👑', title: 'NEW MEMBER!',            color: '#ff44ff', pts: 500,  dur: 180 },
+        gift:      { icon: '🎁', title: 'GIFTED MEMBERSHIP!',     color: '#44ddff', pts: 800,  dur: 200 }
+      };
+      var cfg = config[type];
+      if (!cfg) return;
+
+      // buscar avatar automaticamente se não fornecido
+      if (!avatar) {
+        // tentar userPicks
+        var up = userPicks.find(function(u){ return u.userName === name; });
+        if (up && up.avatarUrl) { avatar = up.avatarUrl; }
+        // tentar persistentScores
+        if (!avatar && persistentScores[name] && persistentScores[name].avatar) {
+          avatar = persistentScores[name].avatar;
+        }
+        // tentar ranking carregado
+        if (!avatar && rankingData.length > 0) {
+          var rk = rankingData.find(function(r){ return r.user === name || r.user === '@' + name; });
+          if (rk && rk.avatarUrl) avatar = rk.avatarUrl;
+        }
+      }
+
+      // avatar HTML
+      var avatarHtml = '';
+      if (avatar) {
+        avatarHtml = '<img class="announce-avatar" src="' + avatar + '" style="border-color:' + cfg.color + ';box-shadow:0 0 12px ' + cfg.color + '" />';
+      } else {
+        avatarHtml = '<div class="announce-avatar-placeholder" style="border-color:' + cfg.color + ';box-shadow:0 0 12px ' + cfg.color + '">' + cfg.icon + '</div>';
+      }
+
+      // anúncio centralizado (DOM overlay)
+      var overlay = document.getElementById('announceOverlay');
+      var card = document.createElement('div');
+      card.className = 'announce-card';
+      card.style.border = '2px solid ' + cfg.color;
+      card.style.boxShadow = '0 0 30px ' + cfg.color + ', inset 0 0 20px rgba(0,0,0,0.3)';
+      card.innerHTML =
+        avatarHtml +
+        '<div class="announce-title" style="color:' + cfg.color + ';text-shadow:0 0 12px ' + cfg.color + '">' + cfg.title + '</div>' +
+        '<div class="announce-name">' + name + '</div>' +
+        '<div class="announce-pts" style="color:' + cfg.color + '">+' + cfg.pts + ' pts</div>';
+      overlay.appendChild(card);
+
+      // fade out e remover após duração
+      var displayMs = cfg.dur * 16.67; // frames → ms
+      setTimeout(function () {
+        card.classList.add('fade-out');
+        setTimeout(function () { if (card.parentNode) card.parentNode.removeChild(card); }, 500);
+      }, displayMs);
+
+      // pontos
+      score += cfg.pts;
+      spawnText(cx, cy + 15, '+' + cfg.pts, cfg.color);
+      if (_audioStarted) sfxSkillActivate();
+
+      // efeitos por tipo
+      if (type === 'follow') {
+        for (var i = 0; i < 3; i++) activateTNT(cx + (i - 1) * TILE * 2, cy, name, '');
+      }
+      else if (type === 'superchat') {
+        for (var i = 0; i < 2; i++) activateMegaTNT(cx + (i - 0.5) * TILE * 3, cy, name, '');
+        shakeAmt = Math.max(shakeAmt, 18);
+      }
+      else if (type === 'member') {
+        for (var i = 0; i < 5; i++) activateTNT(cx + (i - 2) * TILE * 1.5, cy, name, '');
+        activateMegaTNT(cx, cy, name, '');
+      }
+      else if (type === 'gift') {
+        activateMegaTNT(cx - TILE * 2, cy, name, '');
+        activateMegaTNT(cx + TILE * 2, cy, name, '');
+        for (var i = 0; i < 8; i++) activateTNT(cx + (Math.random() - 0.5) * TILE * 8, cy, name, '');
+        shakeAmt = Math.max(shakeAmt, 22);
+      }
+    }
+
+
+  </script>
+</body>
+
+</html>

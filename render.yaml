@@ -1,0 +1,13 @@
+services:
+  - type: web
+    name: pickaxe-drop-tiktok
+    runtime: node
+    buildCommand: npm install
+    startCommand: npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: TIKTOK_SESSION_ID
+        sync: false
+      - key: TIKTOK_SIGN_KEY
+        sync: false
